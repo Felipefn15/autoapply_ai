@@ -1,123 +1,223 @@
-# AutoApply.AI 🚀
+# AutoApply.AI
 
-Sistema automatizado para busca e aplicação em vagas remotas ao redor do mundo, com foco em profissionais de tecnologia do Brasil.
+AutoApply.AI é uma ferramenta automatizada de busca e aplicação para vagas de emprego que ajuda você a encontrar e se candidatar a oportunidades relevantes de forma eficiente.
 
-## 🎯 Funcionalidades
+## Funcionalidades
 
-- **Análise de Currículo**
-  - Extração automática de PDF e TXT
-  - Detecção inteligente de habilidades
-  - Categorização de experiências
-  - Suporte a múltiplos idiomas
+- **Busca Inteligente de Vagas**: Pesquisa vagas em múltiplas plataformas (atualmente suportando Remotive e WeWorkRemotely)
+- **Correspondência Baseada em IA**: Utiliza o LLM da GROQ para avaliar a compatibilidade das vagas com seu currículo
+- **Candidaturas Automatizadas**: Aplica automaticamente para vagas que atendem aos seus critérios
+- **Preferências Configuráveis**: Personalize sua busca de emprego com preferências detalhadas
+- **Acompanhamento de Progresso**: Mantenha o controle de suas candidaturas e correspondências
 
-- **Busca de Vagas**
-  - Vagas 100% remotas globais
-  - Múltiplas plataformas (LinkedIn, Indeed, Remotive, etc.)
-  - Filtros inteligentes por:
-    - Faixa salarial
-    - Fuso horário compatível
-    - Requisitos de idioma
-    - Tipo de contrato
-    - Benefícios oferecidos
-
-- **Matching Inteligente**
-  - Análise de compatibilidade com IA
-  - Pontuação de match por vaga
-  - Sugestões de melhorias no currículo
-  - Priorização de vagas mais adequadas
-
-## 🛠️ Instalação
+## Instalação
 
 1. Clone o repositório:
 ```bash
-git clone https://github.com/seu-usuario/autoapply_ai.git
+git clone https://github.com/yourusername/autoapply_ai.git
 cd autoapply_ai
 ```
 
-2. Crie e ative o ambiente virtual:
+2. Crie um ambiente virtual:
 ```bash
 python -m venv venv
-source venv/bin/activate  # Linux/Mac
-# ou
-.\venv\Scripts\activate  # Windows
+source venv/bin/activate  # No Windows: venv\Scripts\activate
 ```
 
-3. Instale as dependências:
+3. Instale o pacote:
 ```bash
-pip install -r requirements.txt
+pip install -e .
 ```
 
-4. Configure o arquivo `.env`:
+4. Configure suas variáveis de ambiente:
 ```bash
 cp .env.example .env
-# Edite o arquivo .env com suas configurações
+# Edite o arquivo .env com suas chaves de API e preferências
 ```
 
-## ⚙️ Configuração
+## Configuração
 
-O arquivo `.env` permite personalizar:
+### Variáveis de Ambiente
 
-- **Localização**
-  - País e cidade base
-  - Fuso horário local
+O sistema pode ser configurado através de variáveis de ambiente. Crie um arquivo `.env` na raiz do projeto com as seguintes variáveis:
 
-- **Preferências de Trabalho**
-  - Faixa salarial desejada (USD)
-  - Tipos de contrato aceitos
-  - Idiomas de preferência
-  - Empresas favoritas/bloqueadas
-
-- **Preferências Técnicas**
-  - Anos de experiência
-  - Nível de senioridade
-  - Habilidades principais
-  - Habilidades secundárias
-
-## 🚀 Uso
-
-1. Coloque seu currículo em PDF ou TXT na pasta `data/resumes/`
-
-2. Execute o sistema:
 ```bash
-python app/main.py
+# API Configuration
+GROQ_API_KEY=your_groq_api_key
+
+# Email Configuration
+SMTP_SERVER=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USERNAME=your_email@gmail.com
+SMTP_PASSWORD=your_app_password
+SENDER_EMAIL=your_email@gmail.com
+SENDER_NAME="Your Name"
+USE_APP_PASSWORD=true
+EMAIL_SIGNATURE="Best regards,\nYour Name"
+
+# Platform Credentials
+LINKEDIN_EMAIL=your_linkedin_email
+LINKEDIN_PASSWORD=your_linkedin_password
+INDEED_EMAIL=your_indeed_email
+INDEED_PASSWORD=your_indeed_password
+
+# Application Settings
+RESUME_PATH=data/resume.pdf
+DEBUG_MODE=false
 ```
 
-3. Os resultados serão salvos em:
-  - `data/output/`: Vagas encontradas e análises
-  - `data/cache/`: Cache de currículos processados
+#### Notas sobre Configuração de Email:
 
-## 📊 Estrutura do Projeto
+1. Para Gmail:
+   - Use `smtp.gmail.com` como servidor SMTP
+   - Porta 587 para TLS
+   - Você precisa gerar uma "App Password" nas configurações de segurança do Google
+   - Defina `USE_APP_PASSWORD=true`
 
+2. Para outros provedores:
+   - Ajuste `SMTP_SERVER` e `SMTP_PORT` conforme necessário
+   - Use suas credenciais normais
+   - Defina `USE_APP_PASSWORD=false`
+
+3. Assinatura de Email:
+   - Opcional, mas recomendado
+   - Use `\n` para quebras de linha
+   - Inclua seu nome e informações de contato
+
+Crie um arquivo de configuração (`config.json`) com suas preferências:
+
+```json
+{
+  "technical": {
+    "role_type": "Engenheiro de Software",
+    "seniority_level": "Sênior",
+    "primary_skills": ["Python", "JavaScript", "React"],
+    "secondary_skills": ["Node.js", "TypeScript"],
+    "min_experience_years": 5,
+    "max_experience_years": 15,
+    "preferred_stack": ["Python", "React", "Node.js"]
+  },
+  "work_preferences": {
+    "remote_only": true,
+    "accept_hybrid": false,
+    "accept_contract": true,
+    "accept_fulltime": true,
+    "accept_parttime": false,
+    "preferred_languages": ["English", "Portuguese"],
+    "preferred_timezones": ["UTC-3", "UTC-4", "UTC-5"]
+  },
+  "location": {
+    "country": "Brasil",
+    "city": "São Paulo",
+    "state": "SP",
+    "timezone": "UTC-3",
+    "willing_to_relocate": false,
+    "preferred_countries": ["EUA", "Canadá"]
+  },
+  "salary": {
+    "min_salary_usd": 120000,
+    "preferred_currency": "USD",
+    "require_salary_range": true,
+    "accept_equity": true,
+    "min_equity_percent": 0.1
+  },
+  "application": {
+    "max_applications_per_day": 10,
+    "blacklisted_companies": [],
+    "preferred_companies": [],
+    "cover_letter_required": true,
+    "follow_up_days": 7
+  },
+  "api": {
+    "groq_api_key": "sua-chave-api-aqui",
+    "groq_model": "llama3-70b-8192",
+    "groq_temperature": 0.3,
+    "groq_max_tokens": 1000,
+    "groq_rate_limit": 10
+  }
+}
 ```
-autoapply_ai/
-├── app/
-│   ├── resume/         # Análise de currículos
-│   ├── job_search/     # Busca de vagas
-│   ├── matching/       # Match currículo-vaga
-│   └── automation/     # Automação de aplicações
-├── data/
-│   ├── resumes/       # Currículos
-│   ├── cache/         # Cache
-│   └── output/        # Resultados
-└── tests/             # Testes
+
+## Uso
+
+### Buscar Vagas
+
+```bash
+autoapply search caminho/do/seu/curriculo.pdf --platform remotive --limit 10
 ```
 
-## 🔍 Plataformas Suportadas
+### Candidatar-se às Vagas
 
-- LinkedIn
-- Indeed
-- Remotive
-- We Work Remotely (em breve)
-- Stack Overflow Jobs (em breve)
+```bash
+autoapply apply caminho/do/seu/curriculo.pdf --platform remotive --limit 5 --min-score 0.8
+```
 
-## 🤝 Contribuindo
+### Configurar Preferências
 
-Contribuições são bem-vindas! Por favor, leia nosso guia de contribuição antes de submeter mudanças.
+```bash
+autoapply configure --config caminho/do/config.json
+```
 
-## 📝 Licença
+## Estrutura do Projeto
 
-Este projeto está licenciado sob a MIT License - veja o arquivo [LICENSE](LICENSE) para detalhes.
+O projeto está organizado nos seguintes diretórios principais:
 
-## ⚠️ Aviso Legal
+- `app/` - Código fonte da aplicação e lógica de negócio
+  - `automation/` - Código relacionado à automação
+  - `matching/` - Algoritmos e lógica de correspondência
+  - `job_search/` - Funcionalidade de busca de vagas
+  - `resume/` - Processamento e gerenciamento de currículos
+  - `cli/` - Ferramentas de interface de linha de comando
+  - `autoapply/` - Módulos principais da aplicação
 
-Este projeto é para fins educacionais e de automação pessoal. Use com responsabilidade e respeite os termos de serviço de cada plataforma de emprego. 
+- `config/` - Arquivos de configuração
+  - `.isort.cfg` - Configuração de ordenação de imports Python
+  - `pytest.ini` - Configuração do PyTest
+
+- `data/` - Armazenamento de dados e recursos
+  - Listagens de vagas
+  - Modelos de currículo
+  - Dados de treinamento
+
+- `logs/` - Logs da aplicação
+  - Logs de erro
+  - Logs de atividade
+  - Informações de depuração
+
+- `tests/` - Suite de testes e recursos de teste
+
+## Desenvolvimento
+
+1. Instale as dependências de desenvolvimento:
+```bash
+pip install -e ".[dev]"
+```
+
+2. Execute os testes:
+```bash
+pytest
+```
+
+3. Formate o código:
+```bash
+black src tests
+isort src tests
+```
+
+## Contribuindo
+
+1. Faça um fork do repositório
+2. Crie uma branch para sua feature
+3. Faça suas alterações
+4. Execute os testes
+5. Envie um pull request
+
+## Licença
+
+Este projeto está licenciado sob a Licença MIT - veja o arquivo LICENSE para detalhes.
+
+## Agradecimentos
+
+- [GROQ](https://groq.com/) por sua poderosa API de LLM
+- [Remotive](https://remotive.com/) e [WeWorkRemotely](https://weworkremotely.com/) pelas listagens de vagas
+- Todos os contribuidores e usuários do AutoApply.AI 

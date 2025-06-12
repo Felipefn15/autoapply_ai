@@ -32,16 +32,48 @@ class WorkPreferences(BaseModel):
     accept_fulltime: bool = Field(default=True)
     accept_parttime: bool = Field(default=False)
 
+    @classmethod
+    def from_env(cls) -> 'WorkPreferences':
+        """Create work preferences from environment variables."""
+        timezone_range = os.getenv("WORK_TIMEZONE_RANGE", "-3,3")
+        try:
+            min_tz, max_tz = map(int, timezone_range.split(","))
+            work_timezone_range = (min_tz, max_tz)
+        except (ValueError, AttributeError):
+            work_timezone_range = (-3, 3)  # Default if parsing fails
+            
+        return cls(
+            remote_only=os.getenv("REMOTE_ONLY", "true").lower() == "true",
+            accept_hybrid=os.getenv("ACCEPT_HYBRID", "false").lower() == "true",
+            work_timezone_range=work_timezone_range,
+            preferred_languages=os.getenv("PREFERRED_LANGUAGES", "Portuguese,English").split(","),
+            accept_contract=os.getenv("ACCEPT_CONTRACT", "true").lower() == "true",
+            accept_fulltime=os.getenv("ACCEPT_FULLTIME", "true").lower() == "true",
+            accept_parttime=os.getenv("ACCEPT_PARTTIME", "false").lower() == "true"
+        )
+
 class TechnicalPreferences(BaseModel):
     """Technical preferences configuration."""
     experience_years: int = Field(default=5)
     seniority_level: str = Field(default="Senior")
+    role_type: str = Field(default="Software Engineer")
     primary_skills: List[str] = Field(default=[
         "Python", "JavaScript", "React", "Node.js"
     ])
     secondary_skills: List[str] = Field(default=[
         "AWS", "Docker", "Kubernetes"
     ])
+
+    @classmethod
+    def from_env(cls) -> 'TechnicalPreferences':
+        """Create technical preferences from environment variables."""
+        return cls(
+            experience_years=int(os.getenv("EXPERIENCE_YEARS", "5")),
+            seniority_level=os.getenv("SENIORITY_LEVEL", "Senior"),
+            role_type=os.getenv("ROLE_TYPE", "Software Engineer"),
+            primary_skills=os.getenv("PRIMARY_SKILLS", "Python,JavaScript,React,Node.js").split(","),
+            secondary_skills=os.getenv("SECONDARY_SKILLS", "AWS,Docker,Kubernetes").split(",")
+        )
 
 class ApplicationConfig(BaseModel):
     """Application settings configuration."""
@@ -77,21 +109,8 @@ class Config(BaseModel):
                 max_salary_usd=int(os.getenv("MAX_SALARY_USD", "200000")),
                 preferred_currency=os.getenv("PREFERRED_CURRENCY", "USD")
             ),
-            work_preferences=WorkPreferences(
-                remote_only=os.getenv("REMOTE_ONLY", "true").lower() == "true",
-                accept_hybrid=os.getenv("ACCEPT_HYBRID", "false").lower() == "true",
-                work_timezone_range=tuple(map(int, os.getenv("WORK_TIMEZONE_RANGE", "-3,3").split(","))),
-                preferred_languages=os.getenv("PREFERRED_LANGUAGES", "Portuguese,English").split(","),
-                accept_contract=os.getenv("ACCEPT_CONTRACT", "true").lower() == "true",
-                accept_fulltime=os.getenv("ACCEPT_FULLTIME", "true").lower() == "true",
-                accept_parttime=os.getenv("ACCEPT_PARTTIME", "false").lower() == "true"
-            ),
-            technical=TechnicalPreferences(
-                experience_years=int(os.getenv("EXPERIENCE_YEARS", "5")),
-                seniority_level=os.getenv("SENIORITY_LEVEL", "Senior"),
-                primary_skills=os.getenv("PRIMARY_SKILLS", "Python,JavaScript,React,Node.js").split(","),
-                secondary_skills=os.getenv("SECONDARY_SKILLS", "AWS,Docker,Kubernetes").split(",")
-            ),
+            work_preferences=WorkPreferences.from_env(),
+            technical=TechnicalPreferences.from_env(),
             application=ApplicationConfig(
                 auto_apply=os.getenv("AUTO_APPLY", "false").lower() == "true",
                 max_applications_per_day=int(os.getenv("MAX_APPLICATIONS_PER_DAY", "10")),

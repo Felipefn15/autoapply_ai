@@ -5,8 +5,9 @@ AutoApply.AI - Main Application
 import logging
 import os
 from pathlib import Path
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Tuple
 from datetime import datetime
+import time
 
 from dotenv import load_dotenv
 from loguru import logger
@@ -36,6 +37,10 @@ class AutoApplyAI:
     
     def __init__(self):
         """Initialize AutoApply.AI components."""
+        # Load configuration
+        from app.autoapply.config.settings import Config
+        self.config = Config()
+        
         self.resume_parser = ResumeParser()
         self.job_searcher = JobSearcher()
         self.job_matcher = JobMatcher(api_key=os.getenv('GROQ_API_KEY'))
@@ -52,7 +57,7 @@ class AutoApplyAI:
             directory.mkdir(parents=True, exist_ok=True)
         
         # Configuration
-        self.min_match_score = 0.7
+        self.min_match_score = 0.5
         self.max_jobs_per_source = 50
         self.batch_size = 5
     
@@ -137,34 +142,34 @@ class AutoApplyAI:
             logger.error(f"Error searching jobs: {str(e)}")
             raise
     
-    def match_jobs(self, resume_data: Dict, job_postings: List[JobPosting]) -> List[tuple[JobPosting, MatchResult]]:
-        """Match resume with job postings."""
-        try:
-            # Match jobs in batches
-            matched_jobs = []
-            total_batches = (len(job_postings) + self.batch_size - 1) // self.batch_size
+    def match_jobs(self, resume_data: Dict, jobs: List[JobPosting]) -> List[Tuple[JobPosting, MatchResult]]:
+        """Match resume with job postings in batches."""
+        results = []
+        total_jobs = len(jobs)
+        batch_size = 3  # Reduced batch size for better rate limiting
+        num_batches = (total_jobs + batch_size - 1) // batch_size
+        
+        for batch_num in range(num_batches):
+            start_idx = batch_num * batch_size
+            end_idx = min(start_idx + batch_size, total_jobs)
+            batch_jobs = jobs[start_idx:end_idx]
             
-            for i in range(0, len(job_postings), self.batch_size):
-                batch = job_postings[i:i + self.batch_size]
-                logger.info(f"Processing batch {i//self.batch_size + 1}/{total_batches}")
+            logger.info(f"Processing batch {batch_num + 1}/{num_batches} ({start_idx + 1}-{end_idx} of {total_jobs} jobs)")
+            
+            try:
+                batch_results = self.job_matcher.match(resume_data, batch_jobs)
+                results.extend(batch_results)
                 
-                try:
-                    batch_results = self.job_matcher.match(resume_data, batch)
-                    matched_jobs.extend([
-                        (job, result) for job, result in batch_results 
-                        if result.match_score >= self.min_match_score
-                    ])
-                except Exception as e:
-                    logger.error(f"Error processing batch: {str(e)}")
-                    continue
-            
-            # Sort by match score
-            matched_jobs.sort(key=lambda x: x[1].match_score, reverse=True)
-            return matched_jobs
-            
-        except Exception as e:
-            logger.error(f"Error matching jobs: {str(e)}")
-            raise
+                # Add a small delay between batches to help with rate limiting
+                if batch_num < num_batches - 1:
+                    time.sleep(2)
+                    
+            except Exception as e:
+                logger.error(f"Error processing batch {batch_num + 1}: {str(e)}")
+                # Continue with next batch instead of failing completely
+                continue
+        
+        return results
     
     def apply_to_jobs(self, resume_data: Dict, matched_jobs: List[JobPosting]) -> None:
         """
@@ -196,21 +201,37 @@ class AutoApplyAI:
             resume_data = self.process_resume(resume_path)
             
             # Search for jobs
-            job_postings = self.search_jobs()
-            if not job_postings:
-                logger.warning("No matching jobs found")
+            logger.info("Searching for jobs across all platforms...")
+            jobs = self.job_searcher.search()  # Search all platforms
+            logger.info(f"Found {len(jobs)} total jobs")
+            
+            if not jobs:
+                logger.warning("No jobs found. Please check your search criteria and try again.")
                 return
             
-            # Match jobs
-            matched_jobs = self.match_jobs(resume_data, job_postings)
+            # Match jobs with resume
+            logger.info("Matching jobs with resume...")
+            matched_jobs = self.match_jobs(resume_data, jobs)
+            logger.info(f"Found {len(matched_jobs)} matching jobs")
+            
+            if not matched_jobs:
+                logger.warning("No matching jobs found. Please check your matching criteria and try again.")
+                return
             
             # Save results
             self.save_results(resume_path, matched_jobs)
             
-            logger.info("Completed AutoApply.AI workflow")
+            # Apply to jobs if auto-apply is enabled
+            if self.config.application.auto_apply:
+                logger.info("Auto-applying to matched jobs...")
+                self.apply_to_jobs(resume_data, [job for job, _ in matched_jobs])
+            else:
+                logger.info("Auto-apply is disabled. Review the matches and enable auto-apply in config.py to apply automatically.")
+            
+            logger.info("AutoApply.AI workflow completed successfully")
             
         except Exception as e:
-            logger.error(f"Application error: {str(e)}")
+            logger.error(f"Error in AutoApply.AI workflow: {str(e)}")
             raise
     
     def process_resume(self, resume_path: str) -> Dict:
@@ -236,37 +257,46 @@ class AutoApplyAI:
             logger.error(f"Error processing resume: {str(e)}")
             raise
     
-    def save_results(self, resume_path: str, matched_jobs: List[tuple[JobPosting, MatchResult]]):
-        """Save matching results."""
+    def save_results(self, resume_path: str, matched_jobs: List[Tuple[JobPosting, MatchResult]]) -> None:
+        """Save matching results to a file."""
         try:
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            output_path = f"data/output/{Path(resume_path).stem}_matches_{timestamp}.txt"
+            # Create results directory if it doesn't exist
+            results_dir = Path("data/results")
+            results_dir.mkdir(parents=True, exist_ok=True)
             
-            with open(output_path, 'w') as f:
-                f.write(f"AutoApply.AI Matching Results\n")
-                f.write(f"Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-                f.write(f"Resume: {Path(resume_path).name}\n\n")
+            # Generate filename with timestamp
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            resume_name = Path(resume_path).stem
+            output_file = results_dir / f"matches_{resume_name}_{timestamp}.txt"
+            
+            with open(output_file, "w", encoding="utf-8") as f:
+                f.write(f"AutoApply.AI - Job Matching Results\n")
+                f.write(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+                f.write(f"Resume: {resume_path}\n")
+                f.write(f"Total Jobs Matched: {len(matched_jobs)}\n\n")
                 
-                if not matched_jobs:
-                    f.write("No matching jobs found.\n")
-                    return
-                
-                for i, (job, result) in enumerate(matched_jobs, 1):
-                    f.write(f"\nMatch #{i}\n")
-                    f.write(f"Score: {result.match_score:.2f}\n")
-                    f.write(f"Job: {job.title}\n")
+                for job, match in matched_jobs:
+                    f.write(f"Job Title: {job.title}\n")
                     f.write(f"Company: {job.company}\n")
                     f.write(f"Location: {job.location}\n")
-                    f.write(f"Remote: {job.remote}\n")
-                    f.write("\nMatch Reasons:\n")
-                    for reason in result.match_reasons:
-                        f.write(f"- {reason}\n")
-                    f.write("\nSuggested Improvements:\n")
-                    for suggestion in result.suggested_improvements:
-                        f.write(f"- {suggestion}\n")
-                    f.write("\n" + "-"*50 + "\n")
+                    f.write(f"URL: {job.url}\n")
+                    f.write(f"Platform: {job.platform}\n")
+                    f.write(f"Posted: {job.posted_date}\n")
+                    f.write(f"Match Score: {match.score:.2f}\n")
+                    
+                    if match.match_reasons:
+                        f.write("\nMatch Reasons:\n")
+                        for reason in match.match_reasons:
+                            f.write(f"✓ {reason}\n")
+                    
+                    if match.mismatch_reasons:
+                        f.write("\nMismatch Reasons:\n")
+                        for reason in match.mismatch_reasons:
+                            f.write(f"✗ {reason}\n")
+                    
+                    f.write("\n" + "="*80 + "\n\n")
             
-            logger.info(f"Saved matching results to {output_path}")
+            logger.info(f"Saved matching results to {output_file}")
             
         except Exception as e:
             logger.error(f"Error saving results: {str(e)}")

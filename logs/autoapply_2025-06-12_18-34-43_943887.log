@@ -1,0 +1,489 @@
+2025-06-12 18:34:43.992 | INFO     | __main__:run:186 - Starting AutoApply.AI workflow
+2025-06-12 18:34:43.992 | INFO     | __main__:run:196 - Processing resume: Profile (1).pdf
+2025-06-12 18:34:43.993 | INFO     | app.resume.parser:_extract_and_cache_text:113 - Using cached text version from data/cache/Profile (1)_text.txt
+2025-06-12 18:34:44.003 | INFO     | __main__:_save_resume_data:116 - Saved parsed resume data to %s
+2025-06-12 18:34:44.003 | INFO     | __main__:run:200 - Searching for jobs across all platforms...
+2025-06-12 18:34:44.169 | INFO     | __main__:run:202 - Found 41 total jobs
+2025-06-12 18:34:44.170 | INFO     | __main__:run:209 - Matching jobs with resume...
+2025-06-12 18:34:44.170 | INFO     | __main__:match_jobs:153 - Processing batch 1/14 (1-3 of 41 jobs)
+2025-06-12 18:34:44.170 | INFO     | app.matching.matcher:match:125 - Starting to match 3 jobs...
+2025-06-12 18:34:44.171 | INFO     | app.matching.matcher:match:164 - Completed matching. Found 3 matches above threshold 0.5
+2025-06-12 18:34:46.176 | INFO     | __main__:match_jobs:153 - Processing batch 2/14 (4-6 of 41 jobs)
+2025-06-12 18:34:46.176 | INFO     | app.matching.matcher:match:125 - Starting to match 3 jobs...
+2025-06-12 18:34:46.178 | INFO     | app.matching.matcher:match:164 - Completed matching. Found 3 matches above threshold 0.5
+2025-06-12 18:34:48.180 | INFO     | __main__:match_jobs:153 - Processing batch 3/14 (7-9 of 41 jobs)
+2025-06-12 18:34:48.181 | INFO     | app.matching.matcher:match:125 - Starting to match 3 jobs...
+2025-06-12 18:34:48.181 | WARNING  | app.matching.matcher:match:145 - Error reading cache: 'score'
+2025-06-12 18:34:48.949 | WARNING  | app.matching.matcher:match:145 - Error reading cache: 'score'
+2025-06-12 18:34:50.662 | WARNING  | app.matching.matcher:match:145 - Error reading cache: 'score'
+2025-06-12 18:34:52.274 | ERROR    | app.matching.matcher:_make_api_call_with_retry:264 - Failed to parse API response as JSON. Error: Invalid control character at: line 5 column 52 (char 154)
+2025-06-12 18:34:52.275 | ERROR    | app.matching.matcher:_make_api_call_with_retry:265 - Response text: {
+    "score": 0.65,
+    "match_reasons": [
+        "Strong match in required technical skills (git)",
+        "Location/remote work compatibility matches
+    ],
+    "mismatch_reasons": [
+        "No experience with Flutter, which is a key requirement",
+        "Job type and industry relevance are not specified in the resume"
+    ]
+}
+2025-06-12 18:34:52.275 | WARNING  | app.matching.matcher:_make_api_call_with_retry:269 - Retrying in 5 seconds... (1/3)
+2025-06-12 18:34:58.097 | ERROR    | app.matching.matcher:_make_api_call_with_retry:264 - Failed to parse API response as JSON. Error: Expecting value: line 1 column 1 (char 0)
+2025-06-12 18:34:58.098 | ERROR    | app.matching.matcher:_make_api_call_with_retry:265 - Response text: Here is the analysis:
+
+{
+    "score": 0.7,
+    "match_reasons": [
+        "Strong match in required technical skills (git)",
+        "Location/remote work compatibility (Remote work is allowed)"
+    ],
+    "mismatch_reasons": [
+        "Missing experience with Flutter (specific technology required by the job)",
+        "No specific experience level mentioned in the resume"
+    ]
+}
+
+Note: The score is subjective and based on the factors mentioned. It's a weighted average of the matches and mismatches.
+2025-06-12 18:34:58.098 | WARNING  | app.matching.matcher:_make_api_call_with_retry:269 - Retrying in 10 seconds... (2/3)
+2025-06-12 18:35:08.931 | ERROR    | app.matching.matcher:_make_api_call_with_retry:264 - Failed to parse API response as JSON. Error: Expecting value: line 1 column 1 (char 0)
+2025-06-12 18:35:08.933 | ERROR    | app.matching.matcher:_make_api_call_with_retry:265 - Response text: Here is the analysis:
+
+{
+    "score": 0.7,
+    "match_reasons": [
+        "Strong match in required technical skills (git)",
+        "Location/remote work compatibility is a match",
+        "Language requirements are met (English)"
+    ],
+    "mismatch_reasons": [
+        "No experience with Flutter, which is a requirement",
+        "Job title is Senior Software Engineer, but experience level is not specified in the resume",
+        "No mention of salary expectations in the resume"
+    ]
+}
+2025-06-12 18:35:08.933 | ERROR    | app.matching.matcher:_evaluate_match:174 - Error in API response: Failed to parse response as JSON
+2025-06-12 18:35:08.933 | INFO     | app.matching.matcher:match:164 - Completed matching. Found 2 matches above threshold 0.5
+2025-06-12 18:35:10.936 | INFO     | __main__:match_jobs:153 - Processing batch 4/14 (10-12 of 41 jobs)
+2025-06-12 18:35:10.937 | INFO     | app.matching.matcher:match:125 - Starting to match 3 jobs...
+2025-06-12 18:35:10.939 | WARNING  | app.matching.matcher:match:145 - Error reading cache: 'score'
+2025-06-12 18:35:12.611 | WARNING  | app.matching.matcher:match:145 - Error reading cache: 'score'
+2025-06-12 18:35:14.284 | WARNING  | app.matching.matcher:match:145 - Error reading cache: 'score'
+2025-06-12 18:35:16.488 | INFO     | app.matching.matcher:match:164 - Completed matching. Found 3 matches above threshold 0.5
+2025-06-12 18:35:18.493 | INFO     | __main__:match_jobs:153 - Processing batch 5/14 (13-15 of 41 jobs)
+2025-06-12 18:35:18.494 | INFO     | app.matching.matcher:match:125 - Starting to match 3 jobs...
+2025-06-12 18:35:18.497 | WARNING  | app.matching.matcher:match:145 - Error reading cache: 'score'
+2025-06-12 18:35:20.343 | WARNING  | app.matching.matcher:match:145 - Error reading cache: 'score'
+2025-06-12 18:35:22.096 | WARNING  | app.matching.matcher:match:145 - Error reading cache: 'score'
+2025-06-12 18:35:23.774 | INFO     | app.matching.matcher:match:164 - Completed matching. Found 3 matches above threshold 0.5
+2025-06-12 18:35:25.777 | INFO     | __main__:match_jobs:153 - Processing batch 6/14 (16-18 of 41 jobs)
+2025-06-12 18:35:25.777 | INFO     | app.matching.matcher:match:125 - Starting to match 3 jobs...
+2025-06-12 18:35:25.787 | WARNING  | app.matching.matcher:match:145 - Error reading cache: 'score'
+2025-06-12 18:35:26.795 | INFO     | app.matching.matcher:wait_if_needed:58 - Processed 10 API calls
+2025-06-12 18:35:27.554 | WARNING  | app.matching.matcher:match:145 - Error reading cache: 'score'
+2025-06-12 18:35:27.555 | INFO     | app.matching.matcher:wait_if_needed:47 - Rate limit reached. Waiting 20.6 seconds...
+2025-06-12 18:35:48.996 | WARNING  | app.matching.matcher:match:145 - Error reading cache: 'score'
+2025-06-12 18:35:50.686 | INFO     | app.matching.matcher:match:164 - Completed matching. Found 3 matches above threshold 0.5
+2025-06-12 18:35:52.692 | INFO     | __main__:match_jobs:153 - Processing batch 7/14 (19-21 of 41 jobs)
+2025-06-12 18:35:52.692 | INFO     | app.matching.matcher:match:125 - Starting to match 3 jobs...
+2025-06-12 18:35:52.693 | WARNING  | app.matching.matcher:match:145 - Error reading cache: 'score'
+2025-06-12 18:35:54.356 | ERROR    | app.matching.matcher:_make_api_call_with_retry:264 - Failed to parse API response as JSON. Error: Expecting value: line 1 column 1 (char 0)
+2025-06-12 18:35:54.356 | ERROR    | app.matching.matcher:_make_api_call_with_retry:265 - Response text: Here is the analysis:
+
+{
+    "score": 0.7,
+    "match_reasons": [
+        "Strong match in required technical skills (javascript, react, node)",
+        "Location/remote work compatibility (Remote work allowed)"
+    ],
+    "mismatch_reasons": [
+        "Missing experience with java (specifically required)",
+        "No information about experience level or recent role"
+    ]
+}
+2025-06-12 18:35:54.357 | WARNING  | app.matching.matcher:_make_api_call_with_retry:269 - Retrying in 5 seconds... (1/3)
+2025-06-12 18:36:00.055 | ERROR    | app.matching.matcher:_make_api_call_with_retry:264 - Failed to parse API response as JSON. Error: Invalid control character at: line 5 column 52 (char 173)
+2025-06-12 18:36:00.055 | ERROR    | app.matching.matcher:_make_api_call_with_retry:265 - Response text: {
+    "score": 0.7,
+    "match_reasons": [
+        "Strong match in required technical skills (javascript, react, node)",
+        "Location/remote work compatibility matches
+    ],
+    "mismatch_reasons": [
+        "Missing experience with java",
+        "No information about experience level and recent role"
+    ]
+}
+2025-06-12 18:36:00.056 | WARNING  | app.matching.matcher:_make_api_call_with_retry:269 - Retrying in 10 seconds... (2/3)
+2025-06-12 18:36:10.865 | ERROR    | app.matching.matcher:_make_api_call_with_retry:264 - Failed to parse API response as JSON. Error: Invalid control character at: line 5 column 52 (char 173)
+2025-06-12 18:36:10.866 | ERROR    | app.matching.matcher:_make_api_call_with_retry:265 - Response text: {
+    "score": 0.7,
+    "match_reasons": [
+        "Strong match in required technical skills (javascript, react, node)",
+        "Location/remote work compatibility matches
+    ],
+    "mismatch_reasons": [
+        "Missing experience with java",
+        "No information about experience level or recent role"
+    ]
+}
+2025-06-12 18:36:10.866 | ERROR    | app.matching.matcher:_evaluate_match:174 - Error in API response: Failed to parse response as JSON
+2025-06-12 18:36:10.867 | WARNING  | app.matching.matcher:match:145 - Error reading cache: 'score'
+2025-06-12 18:36:10.867 | INFO     | app.matching.matcher:wait_if_needed:47 - Rate limit reached. Waiting 0.1 seconds...
+2025-06-12 18:36:11.697 | ERROR    | app.matching.matcher:_make_api_call_with_retry:264 - Failed to parse API response as JSON. Error: Expecting ',' delimiter: line 12 column 1 (char 476)
+2025-06-12 18:36:11.697 | ERROR    | app.matching.matcher:_make_api_call_with_retry:265 - Response text: {
+    "score": 0.8,
+    "match_reasons": [
+        "Strong match in required technical skills (React)",
+        "Language requirement (English) is met",
+        "Job type (full_time) matches expectations",
+        "Remote work compatibility is a strong match"
+    ],
+    "mismatch_reasons": [
+        "No specific experience level mentioned in the resume",
+        "SQL skill is required, but not explicitly listed in the resume (although MySQL and PostgreSQL are mentioned)"
+}
+2025-06-12 18:36:11.698 | WARNING  | app.matching.matcher:_make_api_call_with_retry:269 - Retrying in 5 seconds... (1/3)
+2025-06-12 18:36:17.376 | WARNING  | app.matching.matcher:match:145 - Error reading cache: 'score'
+2025-06-12 18:36:19.039 | INFO     | app.matching.matcher:match:164 - Completed matching. Found 2 matches above threshold 0.5
+2025-06-12 18:36:21.040 | INFO     | __main__:match_jobs:153 - Processing batch 8/14 (22-24 of 41 jobs)
+2025-06-12 18:36:21.040 | INFO     | app.matching.matcher:match:125 - Starting to match 3 jobs...
+2025-06-12 18:36:21.042 | WARNING  | app.matching.matcher:match:145 - Error reading cache: 'score'
+2025-06-12 18:36:22.626 | WARNING  | app.matching.matcher:match:145 - Error reading cache: 'score'
+2025-06-12 18:36:24.243 | WARNING  | app.matching.matcher:match:145 - Error reading cache: 'score'
+2025-06-12 18:36:25.930 | ERROR    | app.matching.matcher:_make_api_call_with_retry:264 - Failed to parse API response as JSON. Error: Invalid control character at: line 11 column 61 (char 434)
+2025-06-12 18:36:25.931 | ERROR    | app.matching.matcher:_make_api_call_with_retry:265 - Response text: {
+    "score": 0.7,
+    "match_reasons": [
+        "Strong match in required technical skills (aws, git)",
+        "Language requirement matches (English)",
+        "Job type matches (full_time)"
+    ],
+    "mismatch_reasons": [
+        "Missing experience with required technologies (javascript, java, sql)",
+        "No information about experience level or recent role",
+        "Location is not a concern due to remote work option
+    ]
+}
+2025-06-12 18:36:25.931 | WARNING  | app.matching.matcher:_make_api_call_with_retry:269 - Retrying in 5 seconds... (1/3)
+2025-06-12 18:36:31.768 | ERROR    | app.matching.matcher:_make_api_call_with_retry:264 - Failed to parse API response as JSON. Error: Expecting ',' delimiter: line 11 column 1 (char 317)
+2025-06-12 18:36:31.768 | ERROR    | app.matching.matcher:_make_api_call_with_retry:265 - Response text: {
+    "score": 0.7,
+    "match_reasons": [
+        "Strong match in required technical skills (aws, git)",
+        "Location/remote work compatibility matches remote requirement)"
+    ],
+    "mismatch_reasons": [
+        "Missing experience with java and sql",
+        "No experience level specified in resume"
+    ]
+Note: The score is lower due to the missing experience with java and sql, and no experience level specified in the resume.
+2025-06-12 18:36:31.769 | WARNING  | app.matching.matcher:_make_api_call_with_retry:269 - Retrying in 10 seconds... (2/3)
+2025-06-12 18:36:42.454 | INFO     | app.matching.matcher:match:164 - Completed matching. Found 3 matches above threshold 0.5
+2025-06-12 18:36:44.457 | INFO     | __main__:match_jobs:153 - Processing batch 9/14 (25-27 of 41 jobs)
+2025-06-12 18:36:44.458 | INFO     | app.matching.matcher:match:125 - Starting to match 3 jobs...
+2025-06-12 18:36:44.460 | WARNING  | app.matching.matcher:match:145 - Error reading cache: 'score'
+2025-06-12 18:36:46.086 | WARNING  | app.matching.matcher:match:145 - Error reading cache: 'score'
+2025-06-12 18:36:47.088 | INFO     | app.matching.matcher:wait_if_needed:58 - Processed 20 API calls
+2025-06-12 18:36:47.731 | ERROR    | app.matching.matcher:_make_api_call_with_retry:264 - Failed to parse API response as JSON. Error: Expecting value: line 12 column 5 (char 417)
+2025-06-12 18:36:47.732 | ERROR    | app.matching.matcher:_make_api_call_with_retry:265 - Response text: {
+    "score": 0.9,
+    "match_reasons": [
+        "Strong match in required technical skills (AWS)",
+        "Experience level aligns well with Senior Software Engineer role",
+        "Remote work arrangement matches job requirement",
+        "Language requirement (English) matches"
+    ],
+    "mismatch_reasons": [
+        "No specific experience years mentioned",
+        "No specific recent role mentioned",
+    ]
+}
+2025-06-12 18:36:47.732 | WARNING  | app.matching.matcher:_make_api_call_with_retry:269 - Retrying in 5 seconds... (1/3)
+2025-06-12 18:36:53.852 | ERROR    | app.matching.matcher:_make_api_call_with_retry:264 - Failed to parse API response as JSON. Error: Expecting value: line 13 column 5 (char 442)
+2025-06-12 18:36:53.853 | ERROR    | app.matching.matcher:_make_api_call_with_retry:265 - Response text: {
+    "score": 0.8,
+    "match_reasons": [
+        "Strong match in required technical skills (aws)",
+        "Experience level aligns well (Senior Software Engineer)",
+        "Language requirements match (English)",
+        "Job type match (full_time)",
+        "Location/remote work compatibility (Remote)"
+    ],
+    "mismatch_reasons": [
+        "No specific experience years mentioned",
+        "No specific recent role mentioned",
+    ]
+}
+2025-06-12 18:36:53.854 | WARNING  | app.matching.matcher:_make_api_call_with_retry:269 - Retrying in 10 seconds... (2/3)
+2025-06-12 18:37:04.612 | ERROR    | app.matching.matcher:_make_api_call_with_retry:264 - Failed to parse API response as JSON. Error: Expecting value: line 1 column 1 (char 0)
+2025-06-12 18:37:04.613 | ERROR    | app.matching.matcher:_make_api_call_with_retry:265 - Response text: Here is the JSON response:
+
+{
+    "score": 0.75,
+    "match_reasons": [
+        "Strong match in required technical skills (AWS)",
+        "Language requirement (English) is met",
+        "Job type (full_time) matches"
+    ],
+    "mismatch_reasons": [
+        "Experience level is not specified, which may not align with Senior Software Engineer role",
+        "Location is specified as Rio de Janeiro, Brasil, which may not be compatible with remote work"
+}
+2025-06-12 18:37:04.613 | ERROR    | app.matching.matcher:_evaluate_match:174 - Error in API response: Failed to parse response as JSON
+2025-06-12 18:37:04.614 | WARNING  | app.matching.matcher:match:145 - Error reading cache: 'score'
+2025-06-12 18:37:06.249 | INFO     | app.matching.matcher:match:164 - Completed matching. Found 2 matches above threshold 0.5
+2025-06-12 18:37:08.254 | INFO     | __main__:match_jobs:153 - Processing batch 10/14 (28-30 of 41 jobs)
+2025-06-12 18:37:08.255 | INFO     | app.matching.matcher:match:125 - Starting to match 3 jobs...
+2025-06-12 18:37:08.256 | WARNING  | app.matching.matcher:match:145 - Error reading cache: 'score'
+2025-06-12 18:37:09.926 | ERROR    | app.matching.matcher:_make_api_call_with_retry:264 - Failed to parse API response as JSON. Error: Expecting value: line 1 column 1 (char 0)
+2025-06-12 18:37:09.926 | ERROR    | app.matching.matcher:_make_api_call_with_retry:265 - Response text: Here is the JSON response:
+
+{
+    "score": 0.92,
+    "match_reasons": [
+        "Strong match in required technical skills (react, node, aws, git)",
+        "Location/remote work compatibility is not an issue (Remote)",
+        "Language requirements are met (English)"
+    ],
+    "mismatch_reasons": [
+        "No experience level specified in the resume",
+        "No salary expectations specified in the resume"
+    ]
+}
+2025-06-12 18:37:09.926 | WARNING  | app.matching.matcher:_make_api_call_with_retry:269 - Retrying in 5 seconds... (1/3)
+2025-06-12 18:37:15.713 | WARNING  | app.matching.matcher:match:145 - Error reading cache: 'score'
+2025-06-12 18:37:17.416 | WARNING  | app.matching.matcher:match:145 - Error reading cache: 'score'
+2025-06-12 18:37:19.074 | ERROR    | app.matching.matcher:_make_api_call_with_retry:264 - Failed to parse API response as JSON. Error: Expecting value: line 1 column 1 (char 0)
+2025-06-12 18:37:19.074 | ERROR    | app.matching.matcher:_make_api_call_with_retry:265 - Response text: Here is the JSON response:
+
+{
+    "score": 0.7,
+    "match_reasons": [
+        "Strong match in required technical skills (python, aws)",
+        "Location/remote work compatibility (Remote)"
+    ],
+    "mismatch_reasons": [
+        "Missing experience with specific technology (java, docker, kubernetes, sql)",
+        "Job type mismatch (contract vs. not specified)"
+    ]
+}
+2025-06-12 18:37:19.076 | WARNING  | app.matching.matcher:_make_api_call_with_retry:269 - Retrying in 5 seconds... (1/3)
+2025-06-12 18:37:24.731 | INFO     | app.matching.matcher:match:164 - Completed matching. Found 3 matches above threshold 0.5
+2025-06-12 18:37:26.737 | INFO     | __main__:match_jobs:153 - Processing batch 11/14 (31-33 of 41 jobs)
+2025-06-12 18:37:26.739 | INFO     | app.matching.matcher:match:125 - Starting to match 3 jobs...
+2025-06-12 18:37:26.741 | WARNING  | app.matching.matcher:match:145 - Error reading cache: 'score'
+2025-06-12 18:37:28.810 | ERROR    | app.matching.matcher:_make_api_call_with_retry:264 - Failed to parse API response as JSON. Error: Expecting value: line 1 column 1 (char 0)
+2025-06-12 18:37:28.810 | ERROR    | app.matching.matcher:_make_api_call_with_retry:265 - Response text: Here is the analysis of the match between the resume and job posting:
+
+{
+    "score": 0.7,
+    "match_reasons": [
+        "Strong match in required technical skills (AWS)",
+        "Language requirement (English) is met",
+        "Job type (full-time) aligns with expectations",
+        "Remote work compatibility is a good match"
+    ],
+    "mismatch_reasons": [
+        "Missing experience with Kubernetes, which is a required skill",
+        "No information about experience level or recent role",
+        "Location is specified in the resume, but it's not clear if the candidate is open to relocation"
+    ]
+}
+
+Note that the score is lower than 0.85 because of the missing experience with Kubernetes and the lack of information about the experience level and recent role. However, the match is strong in terms of technical skills, language, job type, and remote work compatibility.
+2025-06-12 18:37:28.810 | WARNING  | app.matching.matcher:_make_api_call_with_retry:269 - Retrying in 5 seconds... (1/3)
+2025-06-12 18:37:34.761 | WARNING  | app.matching.matcher:match:145 - Error reading cache: 'score'
+2025-06-12 18:37:36.391 | WARNING  | app.matching.matcher:match:145 - Error reading cache: 'score'
+2025-06-12 18:37:38.496 | ERROR    | app.matching.matcher:_make_api_call_with_retry:264 - Failed to parse API response as JSON. Error: Expecting value: line 1 column 1 (char 0)
+2025-06-12 18:37:38.496 | ERROR    | app.matching.matcher:_make_api_call_with_retry:265 - Response text: Here is the JSON response:
+
+{
+    "score": 0.83,
+    "match_reasons": [
+        "Strong match in required technical skills (react, git)",
+        "Location/remote work compatibility is a good match)",
+        "Language requirements (English) are met"
+    ],
+    "mismatch_reasons": [
+        "SQL skill is required but not found in the resume",
+        "Experience level is not specified in the resume, but the job requires a Senior Software Engineer II"
+}
+2025-06-12 18:37:38.496 | WARNING  | app.matching.matcher:_make_api_call_with_retry:269 - Retrying in 5 seconds... (1/3)
+2025-06-12 18:37:44.268 | ERROR    | app.matching.matcher:_make_api_call_with_retry:264 - Failed to parse API response as JSON. Error: Expecting value: line 1 column 1 (char 0)
+2025-06-12 18:37:44.269 | ERROR    | app.matching.matcher:_make_api_call_with_retry:265 - Response text: Here is the analysis of the match between the resume and job posting:
+
+{
+    "score": 0.83,
+    "match_reasons": [
+        "Strong match in required technical skills (react, git)",
+        "Location/remote work compatibility is a good match)",
+        "Job type match (full_time)"
+    ],
+    "mismatch_reasons": [
+        "No experience level specified in the resume, but the job requires a Senior Software Engineer II",
+        "No information about salary expectations in the resume"
+    ]
+}
+2025-06-12 18:37:44.269 | WARNING  | app.matching.matcher:_make_api_call_with_retry:269 - Retrying in 10 seconds... (2/3)
+2025-06-12 18:37:55.242 | ERROR    | app.matching.matcher:_make_api_call_with_retry:264 - Failed to parse API response as JSON. Error: Expecting value: line 1 column 1 (char 0)
+2025-06-12 18:37:55.243 | ERROR    | app.matching.matcher:_make_api_call_with_retry:265 - Response text: Here is the analysis of the match between the resume and job posting:
+
+{
+    "score": 0.83,
+    "match_reasons": [
+        "Strong match in required technical skills (React, Git)",
+        "Location compatibility with remote work option",
+        "Language requirement matches (English)"
+    ],
+    "mismatch_reasons": [
+        "No specific experience level or years of experience mentioned in the resume",
+        "No mention of SQL skills which is a requirement"
+    ]
+}
+
+Note: The score is based on the factors mentioned, with a higher score indicating a stronger match. The match reasons highlight the strengths of the match, while the mismatch reasons highlight areas of concern or potential mismatches.
+2025-06-12 18:37:55.243 | ERROR    | app.matching.matcher:_evaluate_match:174 - Error in API response: Failed to parse response as JSON
+2025-06-12 18:37:55.243 | INFO     | app.matching.matcher:match:164 - Completed matching. Found 2 matches above threshold 0.5
+2025-06-12 18:37:57.244 | INFO     | __main__:match_jobs:153 - Processing batch 12/14 (34-36 of 41 jobs)
+2025-06-12 18:37:57.248 | INFO     | app.matching.matcher:match:125 - Starting to match 3 jobs...
+2025-06-12 18:37:57.256 | WARNING  | app.matching.matcher:match:145 - Error reading cache: 'score'
+2025-06-12 18:37:59.017 | WARNING  | app.matching.matcher:match:145 - Error reading cache: 'score'
+2025-06-12 18:38:00.776 | ERROR    | app.matching.matcher:_make_api_call_with_retry:264 - Failed to parse API response as JSON. Error: Expecting value: line 1 column 1 (char 0)
+2025-06-12 18:38:00.776 | ERROR    | app.matching.matcher:_make_api_call_with_retry:265 - Response text: Here is the analysis:
+
+{
+    "score": 0.7,
+    "match_reasons": [
+        "Strong match in required technical skills: python, aws",
+        "Experience level aligns well with Senior Software Engineer",
+        "Location/remote work compatibility is a match"
+    ],
+    "mismatch_reasons": [
+        "Missing experience with kubernetes",
+        "No information about salary expectations"
+    ]
+}
+
+Note: The score is subjective and based on the analysis of the provided information. It's a definitive score and may vary based on additional factors or more detailed information.
+2025-06-12 18:38:00.776 | WARNING  | app.matching.matcher:_make_api_call_with_retry:269 - Retrying in 5 seconds... (1/3)
+2025-06-12 18:38:06.689 | WARNING  | app.matching.matcher:match:145 - Error reading cache: 'score'
+2025-06-12 18:38:07.691 | INFO     | app.matching.matcher:wait_if_needed:58 - Processed 30 API calls
+2025-06-12 18:38:08.500 | ERROR    | app.matching.matcher:_make_api_call_with_retry:264 - Failed to parse API response as JSON. Error: Expecting value: line 13 column 5 (char 447)
+2025-06-12 18:38:08.500 | ERROR    | app.matching.matcher:_make_api_call_with_retry:265 - Response text: {
+    "score": 0.9,
+    "match_reasons": [
+        "Strong match in required technical skills (node, git)",
+        "Experience level aligns well with Senior Software Engineer role",
+        "Language requirement (English) is met",
+        "Job type (full_time) matches",
+        "Remote work compatibility is met"
+    ],
+    "mismatch_reasons": [
+        "No specific experience years mentioned",
+        "No specific recent role mentioned",
+    ]
+}
+2025-06-12 18:38:08.501 | WARNING  | app.matching.matcher:_make_api_call_with_retry:269 - Retrying in 5 seconds... (1/3)
+2025-06-12 18:38:14.373 | INFO     | app.matching.matcher:match:164 - Completed matching. Found 3 matches above threshold 0.5
+2025-06-12 18:38:16.374 | INFO     | __main__:match_jobs:153 - Processing batch 13/14 (37-39 of 41 jobs)
+2025-06-12 18:38:16.374 | INFO     | app.matching.matcher:match:125 - Starting to match 3 jobs...
+2025-06-12 18:38:16.375 | WARNING  | app.matching.matcher:match:145 - Error reading cache: 'score'
+2025-06-12 18:38:18.025 | WARNING  | app.matching.matcher:match:145 - Error reading cache: 'score'
+2025-06-12 18:38:19.831 | ERROR    | app.matching.matcher:_make_api_call_with_retry:264 - Failed to parse API response as JSON. Error: Expecting value: line 1 column 1 (char 0)
+2025-06-12 18:38:19.832 | ERROR    | app.matching.matcher:_make_api_call_with_retry:265 - Response text: Here is the analysis:
+
+{
+    "score": 0.83,
+    "match_reasons": [
+        "Strong match in required technical skills (python, react, aws)",
+        "Language requirement (English) is met",
+        "Job type (full_time) matches",
+        "Remote work compatibility is a good fit"
+    ],
+    "mismatch_reasons": [
+        "No specific experience level mentioned in the resume",
+        "Salary expectations are not specified in the resume"
+    ]
+}
+
+Note: The score is based on the factors mentioned, with a higher score indicating a stronger match. The match reasons and mismatch reasons are based on the analysis of the resume and job requirements.
+2025-06-12 18:38:19.832 | WARNING  | app.matching.matcher:_make_api_call_with_retry:269 - Retrying in 5 seconds... (1/3)
+2025-06-12 18:38:25.646 | WARNING  | app.matching.matcher:match:145 - Error reading cache: 'score'
+2025-06-12 18:38:27.418 | ERROR    | app.matching.matcher:_make_api_call_with_retry:264 - Failed to parse API response as JSON. Error: Expecting value: line 1 column 1 (char 0)
+2025-06-12 18:38:27.419 | ERROR    | app.matching.matcher:_make_api_call_with_retry:265 - Response text: Here is the JSON response:
+
+{
+    "score": 0.92,
+    "match_reasons": [
+        "Strong match in required technical skills (react, angular, node, git)",
+        "Experience level aligns well with Senior Software Engineer role",
+        "Location compatibility is excellent with remote work option",
+        "Language requirement is met with English proficiency"
+    ],
+    "mismatch_reasons": [
+        "No experience information provided",
+        "No specific experience with vue and sql mentioned in the job requirements"
+}
+2025-06-12 18:38:27.419 | WARNING  | app.matching.matcher:_make_api_call_with_retry:269 - Retrying in 5 seconds... (1/3)
+2025-06-12 18:38:33.158 | INFO     | app.matching.matcher:match:164 - Completed matching. Found 3 matches above threshold 0.5
+2025-06-12 18:38:35.164 | INFO     | __main__:match_jobs:153 - Processing batch 14/14 (40-41 of 41 jobs)
+2025-06-12 18:38:35.165 | INFO     | app.matching.matcher:match:125 - Starting to match 2 jobs...
+2025-06-12 18:38:35.167 | WARNING  | app.matching.matcher:match:145 - Error reading cache: 'score'
+2025-06-12 18:38:36.753 | WARNING  | app.matching.matcher:match:145 - Error reading cache: 'score'
+2025-06-12 18:38:38.862 | ERROR    | app.matching.matcher:_make_api_call_with_retry:264 - Failed to parse API response as JSON. Error: Expecting value: line 1 column 1 (char 0)
+2025-06-12 18:38:38.862 | ERROR    | app.matching.matcher:_make_api_call_with_retry:265 - Response text: Here is the analysis:
+
+{
+    "score": 0.7,
+    "match_reasons": [
+        "Strong match in required technical skills (python)",
+        "Experience level aligns well with senior software engineer role",
+        "Remote work option aligns with candidate's location",
+    ],
+    "mismatch_reasons": [
+        "Missing experience with c++",
+        "No information about salary expectations",
+        "No information about recent role"
+    ]
+}
+2025-06-12 18:38:38.863 | WARNING  | app.matching.matcher:_make_api_call_with_retry:269 - Retrying in 5 seconds... (1/3)
+2025-06-12 18:38:44.845 | ERROR    | app.matching.matcher:_make_api_call_with_retry:264 - Failed to parse API response as JSON. Error: Expecting value: line 1 column 1 (char 0)
+2025-06-12 18:38:44.846 | ERROR    | app.matching.matcher:_make_api_call_with_retry:265 - Response text: Here is the analysis:
+
+{
+    "score": 0.7,
+    "match_reasons": [
+        "Strong match in required technical skills (python)",
+        "Experience level aligns well with senior software engineer role",
+        "Remote work option aligns with candidate's location",
+    ],
+    "mismatch_reasons": [
+        "Missing experience with C++",
+        "No information about salary expectations",
+        "No information about relevant industry experience"
+    ]
+}
+2025-06-12 18:38:44.846 | WARNING  | app.matching.matcher:_make_api_call_with_retry:269 - Retrying in 10 seconds... (2/3)
+2025-06-12 18:38:55.831 | ERROR    | app.matching.matcher:_make_api_call_with_retry:264 - Failed to parse API response as JSON. Error: Expecting value: line 1 column 1 (char 0)
+2025-06-12 18:38:55.831 | ERROR    | app.matching.matcher:_make_api_call_with_retry:265 - Response text: Here is the analysis:
+
+{
+    "score": 0.7,
+    "match_reasons": [
+        "Strong match in required technical skills (python)",
+        "Location/remote work compatibility is a perfect match",
+        "Job type match (full_time)"
+    ],
+    "mismatch_reasons": [
+        "No mention of experience level, which is a key requirement for a Senior Software Engineer role",
+        "Lack of experience with C++ which is a required skill",
+        "No information about salary expectations"
+    ]
+}
+2025-06-12 18:38:55.831 | ERROR    | app.matching.matcher:_evaluate_match:174 - Error in API response: Failed to parse response as JSON
+2025-06-12 18:38:55.831 | INFO     | app.matching.matcher:match:164 - Completed matching. Found 1 matches above threshold 0.5
+2025-06-12 18:38:55.831 | INFO     | __main__:run:211 - Found 36 matching jobs
+2025-06-12 18:38:55.833 | INFO     | __main__:save_results:295 - Saved matching results to data/results/matches_Profile (1)_20250612_183855.txt
+2025-06-12 18:38:55.833 | ERROR    | __main__:run:230 - Error in AutoApply.AI workflow: 'AutoApplyAI' object has no attribute 'config'
+2025-06-12 18:38:55.833 | ERROR    | __main__:main:313 - Application error: 'AutoApplyAI' object has no attribute 'config'

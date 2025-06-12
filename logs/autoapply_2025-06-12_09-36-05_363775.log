@@ -1,0 +1,11 @@
+2025-06-12 09:36:05.419 | INFO     | __main__:run:185 - Starting AutoApply.AI workflow
+2025-06-12 09:36:05.420 | INFO     | __main__:run:195 - Processing resume: Profile (1).pdf
+2025-06-12 09:36:05.420 | INFO     | app.resume.parser:_extract_and_cache_text:113 - Using cached text version from data/cache/Profile (1)_text.txt
+2025-06-12 09:36:05.441 | INFO     | __main__:_save_resume_data:115 - Saved parsed resume data to %s
+2025-06-12 09:36:05.441 | INFO     | __main__:run:202 - Searching jobs on remotive...
+2025-06-12 09:36:05.441 | INFO     | __main__:run:204 - Found 0 jobs on remotive
+2025-06-12 09:36:05.441 | INFO     | __main__:run:202 - Searching jobs on weworkremotely...
+2025-06-12 09:36:05.441 | INFO     | __main__:run:204 - Found 0 jobs on weworkremotely
+2025-06-12 09:36:05.441 | INFO     | __main__:run:202 - Searching jobs on stackoverflow...
+2025-06-12 09:36:05.441 | INFO     | __main__:run:204 - Found 0 jobs on stackoverflow
+2025-06-12 09:36:05.442 | WARNING  | __main__:run:211 - No jobs found on any platform

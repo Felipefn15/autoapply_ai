@@ -1,0 +1,53 @@
+John Doe
+Software Engineer
+São Paulo, Brazil
+john.doe@example.com
++55 11 99999-9999
+
+SUMMARY
+Senior Software Engineer with 8+ years of experience in full-stack development, specializing in Python, JavaScript, and cloud technologies. Strong background in building scalable web applications and leading development teams.
+
+SKILLS
+Programming Languages: Python, JavaScript, TypeScript, SQL
+Frameworks: React, Node.js, Django, FastAPI
+Cloud & DevOps: AWS, Docker, Kubernetes, CI/CD
+Tools: Git, JIRA, Confluence
+Languages: English (Fluent), Portuguese (Native)
+
+EXPERIENCE
+
+Senior Software Engineer | TechCorp Inc. | Remote
+January 2020 - Present
+- Led development of microservices architecture using Python and FastAPI
+- Implemented CI/CD pipelines reducing deployment time by 60%
+- Mentored junior developers and conducted code reviews
+- Managed team of 5 developers across multiple time zones
+
+Full Stack Developer | WebSolutions Ltd. | São Paulo, Brazil
+March 2017 - December 2019
+- Developed and maintained React-based front-end applications
+- Built RESTful APIs using Node.js and Express
+- Improved application performance by 40% through optimization
+- Collaborated with UX team to implement new features
+
+Software Developer | StartupXYZ | São Paulo, Brazil
+June 2015 - February 2017
+- Developed Python scripts for data processing and analysis
+- Created automated testing framework reducing bugs by 30%
+- Participated in Agile development process
+
+EDUCATION
+
+Bachelor of Computer Science
+University of São Paulo
+2011 - 2015
+
+CERTIFICATIONS
+- AWS Certified Solutions Architect
+- MongoDB Certified Developer
+- Scrum Master Certified
+
+PROJECTS
+- Open source contributor to various Python and JavaScript projects
+- Created popular npm package with 10k+ downloads
+- Developed machine learning model for text classification 

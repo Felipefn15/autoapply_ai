@@ -1,0 +1,157 @@
+2025-06-12 10:27:50.407 | INFO     | __main__:run:186 - Starting AutoApply.AI workflow
+2025-06-12 10:27:50.408 | INFO     | __main__:run:196 - Processing resume: Profile (1).pdf
+2025-06-12 10:27:50.409 | INFO     | app.resume.parser:_extract_and_cache_text:113 - Using cached text version from data/cache/Profile (1)_text.txt
+2025-06-12 10:27:50.419 | INFO     | __main__:_save_resume_data:116 - Saved parsed resume data to %s
+2025-06-12 10:27:50.419 | INFO     | __main__:run:200 - Searching for jobs across all platforms...
+2025-06-12 10:27:50.643 | INFO     | __main__:run:202 - Found 41 total jobs
+2025-06-12 10:27:50.644 | INFO     | __main__:run:209 - Matching jobs with resume...
+2025-06-12 10:27:50.644 | INFO     | __main__:match_jobs:153 - Processing batch 1/14 (1-3 of 41 jobs)
+2025-06-12 10:27:50.644 | INFO     | app.matching.matcher:match:122 - Starting to match 3 jobs...
+2025-06-12 10:27:50.645 | INFO     | app.matching.matcher:match:161 - Completed matching. Found 0 matches above threshold 0.7
+2025-06-12 10:27:52.651 | INFO     | __main__:match_jobs:153 - Processing batch 2/14 (4-6 of 41 jobs)
+2025-06-12 10:27:52.653 | INFO     | app.matching.matcher:match:122 - Starting to match 3 jobs...
+2025-06-12 10:27:52.657 | INFO     | app.matching.matcher:match:161 - Completed matching. Found 0 matches above threshold 0.7
+2025-06-12 10:27:54.663 | INFO     | __main__:match_jobs:153 - Processing batch 3/14 (7-9 of 41 jobs)
+2025-06-12 10:27:54.665 | INFO     | app.matching.matcher:match:122 - Starting to match 3 jobs...
+2025-06-12 10:27:54.670 | INFO     | app.matching.matcher:match:161 - Completed matching. Found 2 matches above threshold 0.7
+2025-06-12 10:27:56.670 | INFO     | __main__:match_jobs:153 - Processing batch 4/14 (10-12 of 41 jobs)
+2025-06-12 10:27:56.670 | INFO     | app.matching.matcher:match:122 - Starting to match 3 jobs...
+2025-06-12 10:27:57.457 | INFO     | app.matching.matcher:match:161 - Completed matching. Found 2 matches above threshold 0.7
+2025-06-12 10:27:59.458 | INFO     | __main__:match_jobs:153 - Processing batch 5/14 (13-15 of 41 jobs)
+2025-06-12 10:27:59.458 | INFO     | app.matching.matcher:match:122 - Starting to match 3 jobs...
+2025-06-12 10:27:59.459 | INFO     | app.matching.matcher:match:161 - Completed matching. Found 3 matches above threshold 0.7
+2025-06-12 10:28:01.465 | INFO     | __main__:match_jobs:153 - Processing batch 6/14 (16-18 of 41 jobs)
+2025-06-12 10:28:01.466 | INFO     | app.matching.matcher:match:122 - Starting to match 3 jobs...
+2025-06-12 10:28:01.478 | INFO     | app.matching.matcher:match:161 - Completed matching. Found 2 matches above threshold 0.7
+2025-06-12 10:28:03.484 | INFO     | __main__:match_jobs:153 - Processing batch 7/14 (19-21 of 41 jobs)
+2025-06-12 10:28:03.485 | INFO     | app.matching.matcher:match:122 - Starting to match 3 jobs...
+2025-06-12 10:28:05.179 | ERROR    | app.matching.matcher:_make_api_call_with_retry:261 - Failed to parse API response as JSON. Error: Expecting value: line 1 column 1 (char 0)
+2025-06-12 10:28:05.179 | ERROR    | app.matching.matcher:_make_api_call_with_retry:262 - Response text: Here is the JSON response:
+
+{
+    "score": 0.8,
+    "match_reasons": [
+        "Strong match in required technical skills (React)",
+        "Experience level aligns well with Senior Software Engineer role",
+        "Location compatibility is good as the job is remote"
+    ],
+    "mismatch_reasons": [
+        "Missing experience with SQL, which is a required skill",
+        "No specific experience mentioned in the resume"
+    ]
+}
+2025-06-12 10:28:05.180 | WARNING  | app.matching.matcher:_make_api_call_with_retry:266 - Retrying in 5 seconds... (1/3)
+2025-06-12 10:28:10.878 | ERROR    | app.matching.matcher:_make_api_call_with_retry:261 - Failed to parse API response as JSON. Error: Expecting value: line 1 column 1 (char 0)
+2025-06-12 10:28:10.878 | ERROR    | app.matching.matcher:_make_api_call_with_retry:262 - Response text: Here is the analysis:
+
+{
+    "score": 0.9,
+    "match_reasons": [
+        "Strong match in required technical skills (React)",
+        "Experience level aligns well (Senior Software Engineer)",
+        "Location/remote work compatibility (Remote)",
+        "Language requirements match (English)"
+    ],
+    "mismatch_reasons": [
+        "No specific experience with SQL mentioned in the resume",
+        "No specific salary expectations mentioned in the resume"
+    ]
+}
+2025-06-12 10:28:10.878 | WARNING  | app.matching.matcher:_make_api_call_with_retry:266 - Retrying in 10 seconds... (2/3)
+2025-06-12 10:28:21.653 | INFO     | app.matching.matcher:match:161 - Completed matching. Found 3 matches above threshold 0.7
+2025-06-12 10:28:23.654 | INFO     | __main__:match_jobs:153 - Processing batch 8/14 (22-24 of 41 jobs)
+2025-06-12 10:28:23.655 | INFO     | app.matching.matcher:match:122 - Starting to match 3 jobs...
+2025-06-12 10:28:25.266 | INFO     | app.matching.matcher:match:161 - Completed matching. Found 3 matches above threshold 0.7
+2025-06-12 10:28:27.272 | INFO     | __main__:match_jobs:153 - Processing batch 9/14 (25-27 of 41 jobs)
+2025-06-12 10:28:27.273 | INFO     | app.matching.matcher:match:122 - Starting to match 3 jobs...
+2025-06-12 10:28:28.877 | INFO     | app.matching.matcher:match:161 - Completed matching. Found 3 matches above threshold 0.7
+2025-06-12 10:28:30.882 | INFO     | __main__:match_jobs:153 - Processing batch 10/14 (28-30 of 41 jobs)
+2025-06-12 10:28:30.883 | INFO     | app.matching.matcher:match:122 - Starting to match 3 jobs...
+2025-06-12 10:28:30.885 | INFO     | app.matching.matcher:match:161 - Completed matching. Found 3 matches above threshold 0.7
+2025-06-12 10:28:32.889 | INFO     | __main__:match_jobs:153 - Processing batch 11/14 (31-33 of 41 jobs)
+2025-06-12 10:28:32.889 | INFO     | app.matching.matcher:match:122 - Starting to match 3 jobs...
+2025-06-12 10:28:32.890 | INFO     | app.matching.matcher:match:161 - Completed matching. Found 3 matches above threshold 0.7
+2025-06-12 10:28:34.893 | INFO     | __main__:match_jobs:153 - Processing batch 12/14 (34-36 of 41 jobs)
+2025-06-12 10:28:34.894 | INFO     | app.matching.matcher:match:122 - Starting to match 3 jobs...
+2025-06-12 10:28:36.537 | INFO     | app.matching.matcher:match:161 - Completed matching. Found 3 matches above threshold 0.7
+2025-06-12 10:28:38.540 | INFO     | __main__:match_jobs:153 - Processing batch 13/14 (37-39 of 41 jobs)
+2025-06-12 10:28:38.541 | INFO     | app.matching.matcher:match:122 - Starting to match 3 jobs...
+2025-06-12 10:28:40.371 | ERROR    | app.matching.matcher:_make_api_call_with_retry:261 - Failed to parse API response as JSON. Error: Expecting value: line 1 column 1 (char 0)
+2025-06-12 10:28:40.371 | ERROR    | app.matching.matcher:_make_api_call_with_retry:262 - Response text: Here is the analysis of the match between the resume and job posting:
+
+{
+    "score": 0.92,
+    "match_reasons": [
+        "Strong match in required technical skills (react, angular, node)",
+        "Location compatibility with remote work",
+        "Language requirements met (English)"
+    ],
+    "mismatch_reasons": [
+        "No specific experience level mentioned in the resume",
+        "No mention of SQL experience, which is a requirement
+    ]
+}
+
+Note: The score is based on the strong match in technical skills, location compatibility, and language requirements. However, the mismatch reasons highlight the lack of specific experience level information and SQL experience, which are important requirements for the Senior Software Engineer role.
+2025-06-12 10:28:40.371 | WARNING  | app.matching.matcher:_make_api_call_with_retry:266 - Retrying in 5 seconds... (1/3)
+2025-06-12 10:28:46.154 | INFO     | app.matching.matcher:match:161 - Completed matching. Found 3 matches above threshold 0.7
+2025-06-12 10:28:48.155 | INFO     | __main__:match_jobs:153 - Processing batch 14/14 (40-41 of 41 jobs)
+2025-06-12 10:28:48.156 | INFO     | app.matching.matcher:match:122 - Starting to match 2 jobs...
+2025-06-12 10:28:49.947 | ERROR    | app.matching.matcher:_make_api_call_with_retry:261 - Failed to parse API response as JSON. Error: Expecting value: line 7 column 5 (char 229)
+2025-06-12 10:28:49.947 | ERROR    | app.matching.matcher:_make_api_call_with_retry:262 - Response text: {
+    "score": 0.7,
+    "match_reasons": [
+        "Strong match in required technical skills (python)",
+        "Experience level aligns well with senior role",
+        "Remote work option aligns with candidate's location",
+    ],
+    "mismatch_reasons": [
+        "Missing experience with c++",
+        "No information about salary expectations",
+        "No information about industry relevance"
+    ]
+}
+2025-06-12 10:28:49.947 | WARNING  | app.matching.matcher:_make_api_call_with_retry:266 - Retrying in 5 seconds... (1/3)
+2025-06-12 10:28:55.853 | ERROR    | app.matching.matcher:_make_api_call_with_retry:261 - Failed to parse API response as JSON. Error: Expecting value: line 1 column 1 (char 0)
+2025-06-12 10:28:55.853 | ERROR    | app.matching.matcher:_make_api_call_with_retry:262 - Response text: Here is the analysis of the match between the resume and job posting:
+
+```
+{
+    "score": 0.7,
+    "match_reasons": [
+        "Strong match in required technical skills (python)",
+        "Location/remote work compatibility (Remote)
+    ],
+    "mismatch_reasons": [
+        "Missing experience with specific technology (c++)",
+        "Experience level not specified in resume"
+    ]
+}
+```
+
+Here's a brief explanation of the score: 0.7 indicates a good match, but not perfect. The match reasons highlight the strong technical skills match and remote work compatibility. The mismatch reasons highlight the missing experience with c++ and the lack of specified experience years in the resume.
+2025-06-12 10:28:55.853 | WARNING  | app.matching.matcher:_make_api_call_with_retry:266 - Retrying in 10 seconds... (2/3)
+2025-06-12 10:29:06.736 | ERROR    | app.matching.matcher:_make_api_call_with_retry:261 - Failed to parse API response as JSON. Error: Expecting value: line 1 column 1 (char 0)
+2025-06-12 10:29:06.738 | ERROR    | app.matching.matcher:_make_api_call_with_retry:262 - Response text: Here is the analysis:
+
+{
+    "score": 0.7,
+    "match_reasons": [
+        "Strong match in required technical skills (python)",
+        "Experience level aligns well with senior software engineer role",
+        "Remote work option aligns with candidate's location",
+    ],
+    "mismatch_reasons": [
+        "Missing experience with c++",
+        "No information about salary expectations",
+        "No information about recent role or experience years:
+    ]
+}
+
+Note that the score is lower due to the missing information about salary expectations, recent role, and experience years. Additionally, the mismatch reasons highlight the missing experience with c++.
+2025-06-12 10:29:06.738 | ERROR    | app.matching.matcher:_evaluate_match:171 - Error in API response: Failed to parse response as JSON
+2025-06-12 10:29:06.738 | INFO     | app.matching.matcher:match:161 - Completed matching. Found 1 matches above threshold 0.7
+2025-06-12 10:29:06.738 | INFO     | __main__:run:211 - Found 31 matching jobs
+2025-06-12 10:29:06.739 | ERROR    | __main__:save_results:320 - Error saving results: 'MatchResult' object has no attribute 'mismatch_reasons'
+2025-06-12 10:29:06.739 | ERROR    | __main__:run:230 - Error in AutoApply.AI workflow: 'MatchResult' object has no attribute 'mismatch_reasons'
+2025-06-12 10:29:06.739 | ERROR    | __main__:main:335 - Application error: 'MatchResult' object has no attribute 'mismatch_reasons'

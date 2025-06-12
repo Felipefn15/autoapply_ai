@@ -6,6 +6,7 @@ from typing import Dict, List, Optional
 from urllib.parse import urljoin
 from datetime import datetime
 import pytz
+import re
 
 import requests
 from bs4 import BeautifulSoup
@@ -42,11 +43,8 @@ class JobSearcher:
     def __init__(self):
         """Initialize the job searcher."""
         self.platforms = {
-            'linkedin': self._search_linkedin,
-            'indeed': self._search_indeed,
             'remotive': self._search_remotive,
-            'weworkremotely': self._search_weworkremotely,
-            'stackoverflow': self._search_stackoverflow
+            'weworkremotely': self._search_weworkremotely
         }
         
         # Common headers for requests
@@ -60,26 +58,54 @@ class JobSearcher:
         # Setup timezone
         self.local_tz = pytz.timezone(self.config.location.timezone)
     
-    def search(self, platform: str) -> List[JobPosting]:
+    def search(self, platform: str = None) -> List[JobPosting]:
         """
-        Search for jobs on a specific platform.
+        Search for jobs on specified platform or all platforms if none specified.
         
         Args:
-            platform: Platform to search on ('linkedin', 'indeed', etc.)
+            platform: Platform to search on ('linkedin', 'indeed', etc.) or None for all
             
         Returns:
             List of JobPosting objects
         """
-        if platform not in self.platforms:
+        all_jobs = []
+        
+        # Determine which platforms to search
+        platforms_to_search = [platform] if platform else list(self.platforms.keys())
+        
+        # Validate platform if specified
+        if platform and platform not in self.platforms:
             raise ValueError(f"Unsupported platform: {platform}")
-            
-        try:
-            search_func = self.platforms[platform]
-            jobs = search_func({})  # Empty search terms for now
-            return jobs
-        except Exception as e:
-            logger.error(f"Error searching {platform}: {str(e)}")
-            return []
+        
+        # Generate search terms based on technical preferences
+        search_terms = {
+            'title': f"{self.config.technical.seniority_level} {self.config.technical.role_type}",
+            'skills': self.config.technical.primary_skills,
+            'location': 'Remote' if self.config.work_preferences.remote_only else self.config.location.city,
+            'experience_level': self.config.technical.seniority_level
+        }
+        
+        # Search each platform
+        for platform_name in platforms_to_search:
+            try:
+                logger.info(f"Searching {platform_name}...")
+                search_func = self.platforms[platform_name]
+                
+                # Search for jobs
+                platform_jobs = search_func(search_terms)
+                
+                # Add platform jobs to all jobs
+                all_jobs.extend(platform_jobs)
+                logger.info(f"Found {len(platform_jobs)} jobs on {platform_name}")
+                
+            except Exception as e:
+                logger.error(f"Error searching {platform_name}: {str(e)}")
+        
+        # Filter all jobs based on preferences
+        filtered_jobs = self._filter_jobs(all_jobs)
+        logger.info(f"Found {len(filtered_jobs)} matching jobs after filtering")
+        
+        return filtered_jobs
     
     def _filter_jobs(self, jobs: List[JobPosting]) -> List[JobPosting]:
         """Filter jobs based on preferences."""
@@ -143,70 +169,6 @@ class JobSearcher:
             'location': 'Remote' if self.config.work_preferences.remote_only else self.config.location.city,
             'experience_level': self.config.technical.seniority_level
         }
-    
-    def _search_linkedin(self, search_terms: Dict) -> List[JobPosting]:
-        """Search for jobs on LinkedIn."""
-        # This would use LinkedIn's API in production
-        jobs = []
-        
-        try:
-            # Example implementation - would need LinkedIn API or proper scraping
-            job = JobPosting(
-                title="Senior Software Engineer",
-                company="LinkedIn Example",
-                location="Remote",
-                description="Example job posting for a Senior Software Engineer position",
-                url="https://linkedin.com/jobs/example",
-                platform="linkedin",
-                requirements=["Python", "JavaScript"],
-                remote=True,
-                job_type="Full-time",
-                salary_range="$120,000 - $180,000",
-                salary_currency="USD",
-                salary_min=120000,
-                salary_max=180000,
-                posted_date=datetime.now(self.local_tz).strftime("%Y-%m-%d"),
-                languages=["English"],
-                benefits=["Health Insurance", "401k", "Remote Work"]
-            )
-            jobs.append(job)
-            
-        except Exception as e:
-            logger.error(f"LinkedIn search error: {str(e)}")
-        
-        return jobs
-    
-    def _search_indeed(self, search_terms: Dict) -> List[JobPosting]:
-        """Search for jobs on Indeed."""
-        # This would use Indeed's API in production
-        jobs = []
-        
-        try:
-            # Example implementation - would need Indeed API or proper scraping
-            job = JobPosting(
-                title="Senior Backend Developer",
-                company="Indeed Example",
-                location="Remote",
-                description="Example job posting for a Senior Backend Developer position",
-                url="https://indeed.com/jobs/example",
-                platform="indeed",
-                requirements=["Python", "Django"],
-                remote=True,
-                job_type="Full-time",
-                salary_range="$130,000 - $190,000",
-                salary_currency="USD",
-                salary_min=130000,
-                salary_max=190000,
-                posted_date=datetime.now(self.local_tz).strftime("%Y-%m-%d"),
-                languages=["English", "Portuguese"],
-                benefits=["Health Insurance", "Stock Options", "Remote Work"]
-            )
-            jobs.append(job)
-            
-        except Exception as e:
-            logger.error(f"Indeed search error: {str(e)}")
-        
-        return jobs
     
     def _search_remotive(self, search_terms: Dict) -> List[JobPosting]:
         """Search for jobs on Remotive."""
@@ -287,11 +249,6 @@ class JobSearcher:
     def _search_weworkremotely(self, search_terms: Dict) -> List[JobPosting]:
         """Search for jobs on We Work Remotely."""
         # TODO: Implement We Work Remotely search
-        return []
-    
-    def _search_stackoverflow(self, search_terms: Dict) -> List[JobPosting]:
-        """Search for jobs on Stack Overflow Jobs."""
-        # TODO: Implement Stack Overflow Jobs search
         return []
     
     def _extract_requirements(self, description: str) -> List[str]:
