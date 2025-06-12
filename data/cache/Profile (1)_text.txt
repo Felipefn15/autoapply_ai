@@ -1,0 +1,195 @@
+Felipe França Nogueira
+Contato
+Rio de Janeiro
++5521969689811 (Mobile)
+felipefrancanogueira@gmail.
+com
+Full Stack Software Engineer React | React Native | NodeJS | Ruby
+on Rails | Python | Clean Code | TDD
+Rio de Janeiro, Brasil
+www.linkedin.com/in/
+felipefrancanogueira (LinkedIn)
+Resumo
+Fullstack developer with knowledge of Python, ReactJS, React
+native and in Database like SQL Server, MySQL, SQLite, Postgresql.
+Always focused on doing a good job and gaining new knowledge
+Github Profile: https://github.com/Felipefn15
+Principais competências
+Django
+Flask
+Software Infrastructure
+Languages
+Experiência
+Português (Native or Bilingual)
+English (Full Professional)
+Originate
+Full-stack Developer
+outubro de 2024 - Present (9 meses)
+California, United States
+Certifications
+Introdução a python
+MYSQL I: INICIANDO SUAS
+CONSULTAS
+
+In this role, I worked as a senior full-stack developer across multiple projects,
+utilizing React/Next.js for web development and TypeScript throughout. I have
+Cambridge English Preliminary Test
+(PET)
+substantial experience integrating AI technologies, including OpenAI ChatGPT,
+Gemi, and other AI agents, to build intelligent, scalable solutions. Additionally, I
+Tailwind
+leveraged Redis and LangChain to optimize system performance and enhance
+Open ai and Langchain
+overall functionality.
+Skills: Git · React · Next.js · TypeScript · Redis · LangChain · OpenAI ·
+ChatGPT · Gemi · AI Agent Integration
+Basis
+Full Stack Developer
+agosto de 2024 - Present (11 meses)
+Rio de Janeiro, Brazil
+As a Full Stack Software Engineer at Basis, I contribute to building cutting-
+edge software solutions that empower companies to shape their futures. My
+role involves working on both front-end and back-end technologies, including
+VueJS and Nuxt, Node.js, and various databases, to deliver scalable and high-
+performance applications. Collaborating closely with cross-functional teams, I
+ensure our clients receive exceptional solutions tailored to their specific needs.
+Sierra Studio
+Page 1 of 5
+Full-stack Developer
+novembro de 2023 - junho de 2024 (8 meses)
+Rio de Janeiro, Brazil
+Currently working as a senior full-stack developer on various projects,
+using React/Next.js for web development and React Native for mobile,
+with Tamagui as a unified mobile + web library, all with TypeScript. I have
+significant experience integrating AI solutions, such as OpenAI ChatGPT,
+Gemi, and other AI agents, to create intelligent and dynamic experiences
+across platforms. My expertise also includes utilizing MongoDB, Redis, and
+LangChain to develop and optimize scalable solutions.
+Skills: Git · React Native · Tamagui · Next.js · TypeScript · MongoDB · Redis ·
+LangChain · OpenAI · ChatGPT · Gemi · AI Agent Integration
+Robbyson
+Full Stack Engineer
+setembro de 2023 - novembro de 2023 (3 meses)
+Brazil
+Creating responsive frontend, improving UX and UI for the end user in React
+applications.
+Skills: Web Development · GitLab · CI/CD · Object-Oriented Programming
+(OOP) · Microservices · Code Review · Functional Specifications · React
+Hooks · REST APIs · React.js · Node.js · MongoDB · GraphQL · Apollo client ·
+Storybook · Microfrontends · Redux · Eslint · JS ES6 · Gitlab · Angular 14
+Kanon Gaming Limited
+Full Stack Developer
+agosto de 2022 - agosto de 2023 (1 ano 1 mês)
+Malta
+Working as a fullstack senior developer in IGaming company, using nextJs on
+the frontend and nodeJS on the backend, everything with typescript. Working
+in a team with two junior developers, I schedule two hour per week with each
+of them, so we can do some pair programming, and follow the gitflow with PR
+approval. As a developer I'm focused on bringing new features on the frontend
+and improving the user experience, like connecting with the main Swedish
+Government's application, so the user can login using the unique personal
+number. And on the back I'm responsible to deal with all the external providers
+and third partners, including all the game provides and all the baking and
+payment process.
+Page 2 of 5
+ReactJs, NextJs, Typescript, Redux, Eslint, JS ES6, Gitlab, Webflux, Angular
+14
+NodeJS
+UX/UI Platforms: Figma, AdobeXD
+GCP
+
+Main language: English
+Fetchly Labs
+Full Stack Software Engineer
+março de 2021 - agosto de 2022 (1 ano 6 meses)
+Helping mid-sized american businesses leverage their potential with
+transformative technologies.
+Working as a fullstack senior developer for different projects, using React
+on web and React Native on mobile and Ruby on Rails on the backend,
+everything with typescript. I worked in three different projects, One was a chat
+app, focused on privacy. So we create some features to control permissions
+and clean messages after a certain amount of time. Another project was
+a pattern of National Geographic, so we used VR/AR to bring some new
+adventure opportunities to elderly people during the lockdown.
+Currently working with React, Angular, React Native, Ruby on Rails and
+Detox(E2E testing).
+• React Native
+• Redux
+• Ruby on Rails
+• Detox
+• TDD
+
+• Tailwind CSS
+• GraphQL
+• Apollo client
+• Storybook
+•  Eslint
+• JS ES6
+
+• Gitlab
+Pixelwolf
+Front end Developer
+outubro de 2020 - março de 2021 (6 meses)
+Brazil
+Page 3 of 5
+Working as a Frontend developer for different projects, using React, NextJS,
+VueJS, everything with typescript and using GraphQL to connect with the
+backend. I worked in two different projects in that company, first was a
+rent apartment project, apto.vc, we built this app using nextJS so the client
+would have a quick response to check the pages because of the Server-side
+rendering.  Another project was jovemnerd.com.br, one of the biggest portals
+of geek and nerd culture in Brazil and one of the most listened to podcasts in
+the world!
+Technologies used, ReactJs, NextJs, Typescript, Angular, Tailwind css,
+graphQL, apollo client, storybook, microfrontends, redux, eslint, JS ES6
+BRQ Digital Solutions
+Junior FullStack Developer
+agosto de 2020 - outubro de 2020 (3 meses)
+Rio de Janeiro, Brasil
+Working as a Fullstack developer, focused on React and python, I work on
+different projects. I was using Python to create a lot of endpoints with flask
+and consuming some third party endpoints. Working on a banking client I was
+dealing with multiple transactions simultaneously, so using python and aws,
+we created good and stable connections with some microservices.
+Fullstack developer responsible for developing applications using C # .NET |
+MVC WebApi | .NET Core (REST and SOAP), SQLServer, React JS, Angular |
+Software solutions for banks and the financial market.
+Stone
+System Developer
+novembro de 2019 - agosto de 2020 (10 meses)
+Rio de Janeiro Area, Brazil
+Working as a Fullstack developer, focused on Angular 13, React and python,
+I was based on the logict team inside this payment company. I was using
+Python to create a lot of endpoints with flask and consuming some third party
+endpoints. I developed an online map where the security team would be able
+to track some of our projects. create some small scripts that speeded up the
+operational work in more than 35% and became more dynamic.
+Fullstack developer responsible for developing web applications using
+technologies with Python, Postgresql, React, C #, Tailwind css, among others.
+ETL experience using python API with PostgreSQL to extract SQL server data.
+NeoSyx Desenvolvimento
+2 anos 2 meses
+Page 4 of 5
+Full Stack Engineer
+fevereiro de 2019 - novembro de 2019 (10 meses)
+Rio de Janeiro, Rio de Janeiro, Brazil
+Full developer I
+Systems developer in React, Delphi and using SQL Server as database,
+making contacts with the company's customers, conducting the requirements
+gathering for the initialization of the development process, functional and
+technical documentation of the system to be developed, carrying out
+homologation together to the client, file manipulation (.csv and .xlsx), creation
+of DLLs, creation of graphics with TChart. event-oriented programming, object-
+oriented programming.
+Junior Full Stack Engineer
+outubro de 2017 - fevereiro de 2019 (1 ano 5 meses)
+Rio de Janeiro e Região, Brasil
+Systems developer in React, Delphi and using SQL Server as database,
+making contacts with the company's customers, manipulating files (.csv
+and .xlsx), creating DLLs, creating graphics with TChart. event-oriented
+programming, object-oriented programming.
+Formação acadêmica
+Universidade Veiga de Almeida
+Bachelor of Technology - BTech, Systems Development Analyst · (dezembro
+de 2018 - março de 2023)
+Page 5 of 5

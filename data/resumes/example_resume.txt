@@ -1,0 +1,47 @@
+João da Silva
+Software Engineer
+
+SUMMARY
+Experienced software engineer with 8+ years of experience in full-stack development, specializing in Python, JavaScript, and cloud technologies. Strong background in building scalable web applications and microservices.
+
+SKILLS
+Programming Languages: Python, JavaScript, TypeScript, Java
+Web Technologies: React, Node.js, Django, FastAPI
+Cloud & DevOps: AWS, Docker, Kubernetes, CI/CD
+Databases: PostgreSQL, MongoDB, Redis
+Tools: Git, Linux, VS Code
+
+EXPERIENCE
+
+Senior Software Engineer | TechCorp | 2020 - Present
+- Led development of microservices architecture using Python and FastAPI
+- Implemented CI/CD pipelines reducing deployment time by 60%
+- Mentored junior developers and conducted code reviews
+- Optimized database queries improving application performance by 40%
+
+Software Engineer | WebSolutions | 2017 - 2020
+- Developed full-stack web applications using React and Django
+- Implemented RESTful APIs and integrated third-party services
+- Managed AWS infrastructure and containerized applications
+- Collaborated with product team to define technical requirements
+
+Junior Developer | StartupX | 2015 - 2017
+- Built responsive web interfaces using React and Bootstrap
+- Developed backend services using Node.js and Express
+- Implemented automated testing using Jest and Pytest
+- Participated in agile development process
+
+EDUCATION
+Bachelor's in Computer Science
+University of São Paulo
+2011 - 2015
+
+LANGUAGES
+Portuguese (Native)
+English (Fluent)
+Spanish (Intermediate)
+
+CERTIFICATIONS
+AWS Certified Solutions Architect
+Docker Certified Associate
+MongoDB Certified Developer 

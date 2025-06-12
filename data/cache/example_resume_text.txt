@@ -1,0 +1,44 @@
+Maria Silva
+maria.silva@email.com
+(555) 123-4567
+São Paulo, SP
+
+SUMMARY
+Desenvolvedora Full Stack com 5 anos de experiência em desenvolvimento web e mobile, especializada em React, Node.js e Python. Apaixonada por criar soluções inovadoras e escaláveis.
+
+EXPERIENCE
+Senior Full Stack Developer at TechBrasil
+• Liderou equipe de desenvolvimento no projeto de marketplace B2B
+• Implementou arquitetura de microserviços usando Node.js e Docker
+• Reduziu tempo de deploy em 60% com pipeline CI/CD otimizado
+• Período: 2021 - Presente
+
+Full Stack Developer at StartupX
+• Desenvolveu aplicativo mobile usando React Native
+• Criou APIs RESTful com Django e PostgreSQL
+• Implementou sistema de autenticação OAuth2
+• Período: 2019 - 2021
+
+Junior Developer at WebSolutions
+• Manutenção e desenvolvimento de sites WordPress
+• Criação de plugins personalizados
+• Otimização de performance e SEO
+• Período: 2018 - 2019
+
+EDUCATION
+Mestrado em Ciência da Computação from Universidade de São Paulo
+• Foco em Inteligência Artificial e Machine Learning
+• Projeto de pesquisa em NLP
+• Conclusão: 2020
+
+Bacharelado em Ciência da Computação from UNICAMP
+• Graduação com honras
+• Iniciação científica em Computação Visual
+• Conclusão: 2018
+
+SKILLS
+Linguagens: Python, JavaScript, TypeScript, PHP
+Frameworks: React, Node.js, Django, Express
+DevOps: Docker, Kubernetes, AWS, GCP
+Banco de Dados: PostgreSQL, MongoDB, Redis
+Outros: Git, CI/CD, Agile, Scrum 

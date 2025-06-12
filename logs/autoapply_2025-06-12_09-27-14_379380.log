@@ -1,0 +1,15 @@
+2025-06-12 09:27:14.433 | INFO     | __main__:run:185 - Starting AutoApply.AI workflow
+2025-06-12 09:27:14.434 | INFO     | __main__:run:195 - Processing resume: Profile (1).pdf
+2025-06-12 09:27:14.434 | INFO     | app.resume.parser:_extract_and_cache_text:113 - Using cached text version from data/cache/Profile (1)_text.txt
+2025-06-12 09:27:14.445 | INFO     | __main__:_save_resume_data:115 - Saved parsed resume data to %s
+2025-06-12 09:27:14.446 | INFO     | __main__:search_jobs:128 - Found 1 matching jobs on linkedin
+2025-06-12 09:27:14.446 | INFO     | __main__:search_jobs:128 - Found 1 matching jobs on indeed
+2025-06-12 09:27:14.446 | INFO     | __main__:search_jobs:128 - Found 0 matching jobs on remotive
+2025-06-12 09:27:14.446 | INFO     | __main__:search_jobs:128 - Found 0 matching jobs on weworkremotely
+2025-06-12 09:27:14.446 | INFO     | __main__:search_jobs:128 - Found 0 matching jobs on stackoverflow
+2025-06-12 09:27:14.446 | INFO     | __main__:match_jobs:149 - Processing batch 1/1
+2025-06-12 09:27:15.429 | ERROR    | app.matching.matcher:_parse_match_response:265 - Error parsing match response: 'dict' object has no attribute 'strip'
+2025-06-12 09:27:15.429 | ERROR    | app.matching.matcher:_evaluate_match:161 - Error in match evaluation: 'dict' object has no attribute 'strip'
+2025-06-12 09:27:15.992 | ERROR    | app.matching.matcher:_parse_match_response:265 - Error parsing match response: 'dict' object has no attribute 'strip'
+2025-06-12 09:27:15.992 | ERROR    | app.matching.matcher:_evaluate_match:161 - Error in match evaluation: 'dict' object has no attribute 'strip'
+2025-06-12 09:27:15.993 | INFO     | __main__:run:210 - Completed AutoApply.AI workflow

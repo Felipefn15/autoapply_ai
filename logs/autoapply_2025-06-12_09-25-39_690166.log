@@ -1,0 +1,6 @@
+2025-06-12 09:25:39.749 | INFO     | __main__:run:185 - Starting AutoApply.AI workflow
+2025-06-12 09:25:39.750 | INFO     | __main__:run:195 - Processing resume: Profile (1).pdf
+2025-06-12 09:25:39.751 | INFO     | app.resume.parser:_extract_and_cache_text:113 - Using cached text version from data/cache/Profile (1)_text.txt
+2025-06-12 09:25:39.761 | ERROR    | __main__:process_resume:230 - Error processing resume: 'ResumeParser' object has no attribute 'save_parsed_data'
+2025-06-12 09:25:39.761 | ERROR    | __main__:run:213 - Application error: 'ResumeParser' object has no attribute 'save_parsed_data'
+2025-06-12 09:25:39.762 | ERROR    | __main__:main:281 - Application error: 'ResumeParser' object has no attribute 'save_parsed_data'
