@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import List, Dict, Optional, Tuple
 from datetime import datetime
 import time
+import sys
 
 from dotenv import load_dotenv
 from loguru import logger
@@ -16,6 +17,7 @@ from app.resume.parser import ResumeParser
 from app.job_search.searcher import JobSearcher, JobPosting
 from app.matching.matcher import JobMatcher, MatchResult
 from app.automation.applicator import JobApplicator
+from app.automation.applicator_manager import ApplicatorManager
 
 # Load environment variables
 load_dotenv()
@@ -24,13 +26,83 @@ load_dotenv()
 if not os.getenv("GROQ_API_KEY"):
     raise ValueError("GROQ_API_KEY environment variable is required. Please set it in your .env file.")
 
-# Configure logging
-logger.add(
-    "logs/autoapply_{time}.log",
-    rotation="1 day",
-    retention="7 days",
-    level="INFO"
-)
+def setup_logging():
+    """Configure logging system."""
+    try:
+        # Create logs directory if it doesn't exist
+        log_dir = Path("logs")
+        log_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Configure loguru
+        logger.remove()  # Remove default handler
+        
+        # Add file handler
+        logger.add(
+            "logs/autoapply.log",
+            rotation="10 MB",
+            retention="1 month",
+            level="INFO",
+            format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {message}"
+        )
+        
+        # Add console handler
+        logger.add(
+            sys.stderr,
+            level="INFO",
+            format="<green>{time:HH:mm:ss}</green> | <level>{level}</level> | <cyan>{message}</cyan>"
+        )
+        
+    except Exception as e:
+        print(f"Error setting up logging: {str(e)}")
+        sys.exit(1)
+
+def create_directories():
+    """Create necessary directories."""
+    try:
+        directories = [
+            "data",
+            "data/cache",
+            "data/resumes",
+            "data/resumes/examples",
+            "data/cover_letters",
+            "data/attachments",
+            "data/jobs",
+            "data/jobs/raw",
+            "data/jobs/processed",
+            "logs",
+            "config",
+            "templates"
+        ]
+        
+        for directory in directories:
+            Path(directory).mkdir(parents=True, exist_ok=True)
+            
+    except Exception as e:
+        logger.error(f"Error creating directories: {str(e)}")
+        sys.exit(1)
+
+def check_configuration():
+    """Check if configuration is properly set up."""
+    try:
+        config_file = Path("config/config.yaml")
+        if not config_file.exists():
+            logger.error("Configuration file not found. Please create config/config.yaml")
+            sys.exit(1)
+            
+        resume_file = Path("data/resume.pdf")
+        if not resume_file.exists():
+            logger.error("Resume file not found. Please add your resume to data/resume.pdf")
+            sys.exit(1)
+            
+        signature_file = Path("templates/email_signature.txt")
+        if not signature_file.exists():
+            logger.warning("Email signature file not found. Creating default signature...")
+            signature_file.parent.mkdir(parents=True, exist_ok=True)
+            signature_file.write_text("Best regards,\n[Your Name]")
+            
+    except Exception as e:
+        logger.error(f"Error checking configuration: {str(e)}")
+        sys.exit(1)
 
 class AutoApplyAI:
     """Main application class for AutoApply.AI"""
@@ -260,14 +332,13 @@ class AutoApplyAI:
     def save_results(self, resume_path: str, matched_jobs: List[Tuple[JobPosting, MatchResult]]) -> None:
         """Save matching results to a file."""
         try:
-            # Create results directory if it doesn't exist
-            results_dir = Path("data/results")
-            results_dir.mkdir(parents=True, exist_ok=True)
+            # Save to processed jobs directory
+            processed_dir = Path("data/jobs/processed")
             
             # Generate filename with timestamp
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             resume_name = Path(resume_path).stem
-            output_file = results_dir / f"matches_{resume_name}_{timestamp}.txt"
+            output_file = processed_dir / f"matches_{resume_name}_{timestamp}.txt"
             
             with open(output_file, "w", encoding="utf-8") as f:
                 f.write(f"AutoApply.AI - Job Matching Results\n")
@@ -303,19 +374,33 @@ class AutoApplyAI:
             raise
 
 def main():
-    """Main entry point."""
+    """Main application entry point."""
     try:
-        # Check for required environment variables
-        groq_api_key = os.getenv('GROQ_API_KEY')
-        if not groq_api_key:
-            logger.error("GROQ_API_KEY environment variable is not set")
-            raise ValueError("GROQ_API_KEY environment variable is required")
-
-        app = AutoApplyAI()
-        app.run()
+        # Setup
+        setup_logging()
+        logger.info("Starting AutoApply.AI")
+        
+        # Create directories
+        create_directories()
+        logger.info("Directory structure verified")
+        
+        # Check configuration
+        check_configuration()
+        logger.info("Configuration verified")
+        
+        # Initialize application manager
+        manager = ApplicatorManager()
+        logger.info("Application manager initialized")
+        
+        # Run the application
+        manager.run()
+        
+    except KeyboardInterrupt:
+        logger.info("Application stopped by user")
+        sys.exit(0)
     except Exception as e:
-        logger.error("Application error: {}", str(e))
-        raise
+        logger.error(f"Application error: {str(e)}")
+        sys.exit(1)
 
 if __name__ == "__main__":
     main() 

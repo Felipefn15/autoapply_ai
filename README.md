@@ -1,223 +1,183 @@
 # AutoApply.AI
 
-AutoApply.AI é uma ferramenta automatizada de busca e aplicação para vagas de emprego que ajuda você a encontrar e se candidatar a oportunidades relevantes de forma eficiente.
+An automated job application system that helps you find and apply to relevant jobs across multiple platforms.
 
-## Funcionalidades
+## Features
 
-- **Busca Inteligente de Vagas**: Pesquisa vagas em múltiplas plataformas (atualmente suportando Remotive e WeWorkRemotely)
-- **Correspondência Baseada em IA**: Utiliza o LLM da GROQ para avaliar a compatibilidade das vagas com seu currículo
-- **Candidaturas Automatizadas**: Aplica automaticamente para vagas que atendem aos seus critérios
-- **Preferências Configuráveis**: Personalize sua busca de emprego com preferências detalhadas
-- **Acompanhamento de Progresso**: Mantenha o controle de suas candidaturas e correspondências
+- **Multi-Platform Job Search**
+  - LinkedIn
+  - Indeed
+  - Remotive
+  - WeWorkRemotely
+  - Greenhouse
 
-## Instalação
+- **Smart Job Matching**
+  - Resume parsing and analysis
+  - Skill matching
+  - Experience level matching
+  - Semantic similarity scoring
+  - Customizable matching thresholds
+  - Compatibility score calculation
+  - Intelligent filtering based on requirements
 
-1. Clone o repositório:
+- **Automated Applications**
+  - Platform-specific application automation
+  - Email application fallback
+  - Resume attachment
+  - Dynamic cover letter generation
+  - Application history tracking
+  - SQLite database for job and application storage
+  - Comprehensive logging system
+
+- **AI-Powered Cover Letters**
+  - Personalized for each job using Groq API
+  - Highlights relevant experience
+  - Matches job requirements
+  - Professional formatting
+  - Company-specific customization
+  - Customizable templates
+
+## Installation
+
+1. Clone the repository:
 ```bash
 git clone https://github.com/yourusername/autoapply_ai.git
 cd autoapply_ai
 ```
 
-2. Crie um ambiente virtual:
+2. Create a virtual environment:
 ```bash
 python -m venv venv
-source venv/bin/activate  # No Windows: venv\Scripts\activate
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 ```
 
-3. Instale o pacote:
+3. Install dependencies:
 ```bash
-pip install -e .
+pip install -r requirements.txt
 ```
 
-4. Configure suas variáveis de ambiente:
+4. Install spaCy language model:
 ```bash
-cp .env.example .env
-# Edite o arquivo .env com suas chaves de API e preferências
+python -m spacy download en_core_web_sm
 ```
 
-## Configuração
+5. Configure the application:
+   - Copy `config/config.yaml.example` to `config/config.yaml`
+   - Update the configuration with your settings:
+     - Resume path
+     - Email credentials
+     - API keys
+     - Job search preferences
 
-### Variáveis de Ambiente
+## Configuration
 
-O sistema pode ser configurado através de variáveis de ambiente. Crie um arquivo `.env` na raiz do projeto com as seguintes variáveis:
+The system is configured through `config/config.yaml`. Key settings include:
 
+- **Resume Configuration**
+  - Path to your resume PDF
+  - Update interval
+  - Cache settings
+  - Parser configurations
+
+- **Job Search Settings**
+  - Enabled platforms
+  - Search intervals
+  - Keywords and locations
+  - Remote work preferences
+  - Platform-specific search criteria
+
+- **Application Settings**
+  - Cover letter customization
+  - Email configuration
+  - SMTP settings
+  - Application limits
+  - Template configurations
+    - Cover letter template (templates/cover_letter.txt)
+    - Email signature template (templates/email_signature.txt)
+
+- **API Configuration**
+  - Groq API key for cover letter generation
+  - OAuth credentials for job platforms
+  - Platform-specific API settings
+
+- **System Components**
+  - Resume parser settings
+  - Job matcher thresholds
+  - Cover letter generator preferences
+  - Email sender configurations
+  - Application manager settings
+  - Database configurations
+
+## Usage
+
+1. Start the application:
 ```bash
-# API Configuration
-GROQ_API_KEY=your_groq_api_key
-
-# Email Configuration
-SMTP_SERVER=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USERNAME=your_email@gmail.com
-SMTP_PASSWORD=your_app_password
-SENDER_EMAIL=your_email@gmail.com
-SENDER_NAME="Your Name"
-USE_APP_PASSWORD=true
-EMAIL_SIGNATURE="Best regards,\nYour Name"
-
-# Platform Credentials
-LINKEDIN_EMAIL=your_linkedin_email
-LINKEDIN_PASSWORD=your_linkedin_password
-INDEED_EMAIL=your_indeed_email
-INDEED_PASSWORD=your_indeed_password
-
-# Application Settings
-RESUME_PATH=data/resume.pdf
-DEBUG_MODE=false
+python -m app.main
 ```
 
-#### Notas sobre Configuração de Email:
+2. The system will:
+   - Parse your resume
+   - Search for jobs across platforms
+   - Match jobs against your profile
+   - Apply automatically when matches are found
+   - Track all applications
 
-1. Para Gmail:
-   - Use `smtp.gmail.com` como servidor SMTP
-   - Porta 587 para TLS
-   - Você precisa gerar uma "App Password" nas configurações de segurança do Google
-   - Defina `USE_APP_PASSWORD=true`
+3. Monitor the application:
+   - Check logs in `logs/autoapply.log`
+   - Review applications in `data/applications.db`
+   - View generated cover letters in `data/cover_letters/`
 
-2. Para outros provedores:
-   - Ajuste `SMTP_SERVER` e `SMTP_PORT` conforme necessário
-   - Use suas credenciais normais
-   - Defina `USE_APP_PASSWORD=false`
+## Directory Structure
 
-3. Assinatura de Email:
-   - Opcional, mas recomendado
-   - Use `\n` para quebras de linha
-   - Inclua seu nome e informações de contato
-
-Crie um arquivo de configuração (`config.json`) com suas preferências:
-
-```json
-{
-  "technical": {
-    "role_type": "Engenheiro de Software",
-    "seniority_level": "Sênior",
-    "primary_skills": ["Python", "JavaScript", "React"],
-    "secondary_skills": ["Node.js", "TypeScript"],
-    "min_experience_years": 5,
-    "max_experience_years": 15,
-    "preferred_stack": ["Python", "React", "Node.js"]
-  },
-  "work_preferences": {
-    "remote_only": true,
-    "accept_hybrid": false,
-    "accept_contract": true,
-    "accept_fulltime": true,
-    "accept_parttime": false,
-    "preferred_languages": ["English", "Portuguese"],
-    "preferred_timezones": ["UTC-3", "UTC-4", "UTC-5"]
-  },
-  "location": {
-    "country": "Brasil",
-    "city": "São Paulo",
-    "state": "SP",
-    "timezone": "UTC-3",
-    "willing_to_relocate": false,
-    "preferred_countries": ["EUA", "Canadá"]
-  },
-  "salary": {
-    "min_salary_usd": 120000,
-    "preferred_currency": "USD",
-    "require_salary_range": true,
-    "accept_equity": true,
-    "min_equity_percent": 0.1
-  },
-  "application": {
-    "max_applications_per_day": 10,
-    "blacklisted_companies": [],
-    "preferred_companies": [],
-    "cover_letter_required": true,
-    "follow_up_days": 7
-  },
-  "api": {
-    "groq_api_key": "sua-chave-api-aqui",
-    "groq_model": "llama3-70b-8192",
-    "groq_temperature": 0.3,
-    "groq_max_tokens": 1000,
-    "groq_rate_limit": 10
-  }
-}
+```
+autoapply_ai/
+├── app/
+│   ├── automation/
+│   │   ├── applicator_manager.py
+│   │   ├── cover_letter_generator.py
+│   │   ├── email_sender.py
+│   │   ├── job_matcher.py
+│   │   └── job_searcher.py
+│   ├── db/
+│   │   └── models.py
+│   └── resume/
+│       └── parser.py
+├── config/
+│   └── config.yaml
+├── data/
+│   ├── applications.db
+│   ├── cache/           # Cache for parsed resumes and job searches
+│   ├── resumes/         # Store user resumes
+│   │   └── examples/    # Example resume templates
+│   ├── cover_letters/   # Generated cover letters
+│   ├── attachments/     # Resume attachments and other files
+│   └── jobs/           # Job search results and matches
+│       ├── raw/        # Raw job listings from platforms
+│       └── processed/  # Processed and matched job listings
+├── logs/
+│   └── autoapply.log
+├── templates/
+│   ├── cover_letter.txt
+│   └── email_signature.txt
+├── tests/
+├── README.md
+└── requirements.txt
 ```
 
-## Uso
+## Contributing
 
-### Buscar Vagas
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Run tests: `pytest`
+5. Submit a pull request
 
-```bash
-autoapply search caminho/do/seu/curriculo.pdf --platform remotive --limit 10
-```
+## License
 
-### Candidatar-se às Vagas
+This project is licensed under the MIT License - see the LICENSE file for details.
 
-```bash
-autoapply apply caminho/do/seu/curriculo.pdf --platform remotive --limit 5 --min-score 0.8
-```
+## Acknowledgments
 
-### Configurar Preferências
-
-```bash
-autoapply configure --config caminho/do/config.json
-```
-
-## Estrutura do Projeto
-
-O projeto está organizado nos seguintes diretórios principais:
-
-- `app/` - Código fonte da aplicação e lógica de negócio
-  - `automation/` - Código relacionado à automação
-  - `matching/` - Algoritmos e lógica de correspondência
-  - `job_search/` - Funcionalidade de busca de vagas
-  - `resume/` - Processamento e gerenciamento de currículos
-  - `cli/` - Ferramentas de interface de linha de comando
-  - `autoapply/` - Módulos principais da aplicação
-
-- `config/` - Arquivos de configuração
-  - `.isort.cfg` - Configuração de ordenação de imports Python
-  - `pytest.ini` - Configuração do PyTest
-
-- `data/` - Armazenamento de dados e recursos
-  - Listagens de vagas
-  - Modelos de currículo
-  - Dados de treinamento
-
-- `logs/` - Logs da aplicação
-  - Logs de erro
-  - Logs de atividade
-  - Informações de depuração
-
-- `tests/` - Suite de testes e recursos de teste
-
-## Desenvolvimento
-
-1. Instale as dependências de desenvolvimento:
-```bash
-pip install -e ".[dev]"
-```
-
-2. Execute os testes:
-```bash
-pytest
-```
-
-3. Formate o código:
-```bash
-black src tests
-isort src tests
-```
-
-## Contribuindo
-
-1. Faça um fork do repositório
-2. Crie uma branch para sua feature
-3. Faça suas alterações
-4. Execute os testes
-5. Envie um pull request
-
-## Licença
-
-Este projeto está licenciado sob a Licença MIT - veja o arquivo LICENSE para detalhes.
-
-## Agradecimentos
-
-- [GROQ](https://groq.com/) por sua poderosa API de LLM
-- [Remotive](https://remotive.com/) e [WeWorkRemotely](https://weworkremotely.com/) pelas listagens de vagas
-- Todos os contribuidores e usuários do AutoApply.AI 
+- [Groq](https://groq.com/) for their powerful language models
+- Job platform providers for their services
+- Open source community for various tools and libraries 

@@ -1,281 +1,280 @@
 """
-Applicator Manager Module - Manages all job application automations
+Application Manager Module
+
+Coordinates the entire job application process:
+1. Resume parsing
+2. Job search and matching
+3. Application submission
+4. Email fallback
+5. History tracking
 """
-from typing import Dict, List, Optional
-import asyncio
+import os
+import time
 from datetime import datetime
-import json
 from pathlib import Path
+from typing import Dict, List, Optional
+import yaml
 
-from playwright.sync_api import sync_playwright
 from loguru import logger
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
-from .base_applicator import ApplicationResult
-# from .linkedin_applicator import LinkedInApplicator
-# from .indeed_applicator import IndeedApplicator
-from .email_sender import EmailSender
-from .email_generator import EmailGenerator
-from ..config import config
+from app.automation.cover_letter_generator import CoverLetterGenerator
+from app.automation.email_sender import EmailSender
+from app.automation.job_matcher import JobMatcher
+from app.automation.job_searcher import JobSearcher
+from app.automation.platform_applicator import PlatformApplicator
+from app.db.models import Application, Base, Job
+from app.resume.parser import ResumeParser
 
 class ApplicatorManager:
-    """Manages job applications across multiple platforms."""
+    """Manages the entire job application process."""
     
-    def __init__(self):
-        """Initialize the applicator manager."""
-        self.config = config
-        self.applicators = []
-        self.history_dir = Path("data/applications/history")
-        self.history_dir.mkdir(parents=True, exist_ok=True)
-        self.email_sender = EmailSender(config)
-        self.email_generator = EmailGenerator(config)
+    def __init__(self, config_path: str = "config/config.yaml"):
+        """Initialize the application manager."""
+        # Load configuration
+        self.config = self._load_config(config_path)
         
-    def apply_to_jobs(self, resume_data: Dict, jobs: List[Dict]) -> List[ApplicationResult]:
-        """
-        Apply to multiple jobs across different platforms.
+        # Initialize components
+        self._init_database()
+        self._init_components()
         
-        Args:
-            resume_data: Dictionary containing parsed resume information
-            jobs: List of jobs to apply to
-            
-        Returns:
-            List of ApplicationResult objects
-        """
-        results = []
+        # Track application counts
+        self.applications_today = 0
+        self.last_resume_update = 0
         
-        with sync_playwright() as playwright:
-            # Launch browser
-            browser = playwright.chromium.launch(
-                headless=False if self.config.get('debug_mode') else True
-            )
-            
-            # Create context with custom viewport
-            context = browser.new_context(
-                viewport={'width': 1920, 'height': 1080}
-            )
-            
-            # Create page
-            page = context.new_page()
-            
-            # Initialize applicators
-            self.applicators = [
-                # LinkedInApplicator(page, self.config),
-                # IndeedApplicator(page, self.config)
-                # Outras plataformas podem ser adicionadas aqui futuramente
-            ]
-            
-            # Process each job
-            for job in jobs:
-                try:
-                    # Skip if already applied
-                    if self._check_already_applied(job):
-                        logger.info(f"Already applied to {job['title']} at {job['company']}")
-                        continue
-                    
-                    # Find appropriate applicator
-                    applicator = self._get_applicator(job['url'])
-                    if not applicator:
-                        logger.warning(f"No applicator found for {job['url']}")
-                        continue
-                    
-                    # Try automated application first
-                    logger.info(f"Attempting automated application to {job['title']} at {job['company']}")
-                    result = asyncio.run(applicator.apply(job, resume_data))
-                    
-                    # If automated application failed, try email fallback
-                    if result.status != 'success':
-                        logger.info(f"Automated application failed, trying email fallback for {job['title']}")
-                        email_result = self._try_email_fallback(job, resume_data)
-                        if email_result:
-                            result = email_result
-                    
-                    # Save result
-                    self._save_application_result(job, result)
-                    results.append(result)
-                    
-                    if result.status == 'success':
-                        logger.info(f"Successfully applied to {job['title']} at {job['company']}")
-                    else:
-                        logger.warning(f"Failed to apply to {job['title']} at {job['company']}: {result.error_message}")
-                    
-                    # Add delay between applications
-                    if self.config.get('application_delay'):
-                        time.sleep(float(self.config['application_delay']))
-                    
-                except Exception as e:
-                    logger.error(f"Error applying to {job['title']} at {job['company']}: {str(e)}")
-                    continue
-            
-            # Cleanup
-            context.close()
-            browser.close()
-        
-        return results
-    
-    def _try_email_fallback(self, job: Dict, resume_data: Dict) -> Optional[ApplicationResult]:
-        """
-        Try to apply via email if automated application failed.
-        
-        Args:
-            job: Job posting data
-            resume_data: Resume data
-            
-        Returns:
-            Optional[ApplicationResult]: Result of email application attempt
-        """
+    def _load_config(self, config_path: str) -> Dict:
+        """Load configuration from YAML file."""
         try:
-            # Extract email from job data
-            email = None
+            with open(config_path, 'r') as f:
+                config = yaml.safe_load(f)
+            logger.info("Configuration loaded successfully")
+            return config
+        except Exception as e:
+            logger.error(f"Error loading configuration: {str(e)}")
+            raise
             
-            # Try to find email in job description
-            if 'description' in job:
-                email = self.email_sender.extract_email_from_text(job['description'])
+    def _init_database(self):
+        """Initialize the SQLite database."""
+        try:
+            # Create database directory if needed
+            db_path = self.config['storage']['applications_db']
+            os.makedirs(os.path.dirname(db_path), exist_ok=True)
             
-            # Try to find email in company website
-            if not email and 'company_website' in job:
-                # TODO: Implement web scraping to find contact email
-                pass
+            # Initialize database
+            engine = create_engine(f"sqlite:///{db_path}")
+            Base.metadata.create_all(engine)
             
-            if not email:
-                logger.warning(f"No contact email found for {job['company']}")
-                return None
+            # Create session factory
+            Session = sessionmaker(bind=engine)
+            self.db_session = Session()
             
-            # Generate email content
-            email_content = self.email_generator.generate_application_email(job, resume_data)
+            logger.info("Database initialized successfully")
+        except Exception as e:
+            logger.error(f"Error initializing database: {str(e)}")
+            raise
             
-            # Send email
-            success = self.email_sender.send_application_email(
-                to_email=email,
-                subject=email_content['subject'],
-                body=email_content['body'],
-                resume_path=self.config['automation']['resume_path'],
-                job_data=job
+    def _init_components(self):
+        """Initialize all system components."""
+        try:
+            # Initialize resume parser
+            self.resume_parser = ResumeParser()
+            
+            # Initialize job searcher for each platform
+            self.job_searcher = JobSearcher(self.config['job_search']['platforms'])
+            
+            # Initialize job matcher
+            self.job_matcher = JobMatcher(
+                min_score=self.config['job_search']['matching']['min_score'],
+                required_skills=self.config['job_search']['matching']['required_skills'],
+                preferred_skills=self.config['job_search']['matching']['preferred_skills'],
+                excluded_keywords=self.config['job_search']['matching']['excluded_keywords']
             )
             
-            if success:
-                return ApplicationResult(
-                    company=job['company'],
-                    position=job['title'],
-                    url=job['url'],
-                    status='success',
-                    application_id=f"email_{datetime.now().isoformat()}",
-                    applied_at=datetime.now()
-                )
-            else:
-                return ApplicationResult(
-                    company=job['company'],
-                    position=job['title'],
-                    url=job['url'],
-                    status='failed',
-                    error_message='Failed to send application email',
-                    applied_at=datetime.now()
-                )
+            # Initialize cover letter generator
+            self.cover_letter_generator = CoverLetterGenerator(
+                api_key=self.config['api']['groq']['api_key'],
+                model=self.config['api']['groq']['model']
+            )
+            
+            # Initialize email sender
+            self.email_sender = EmailSender(
+                host=self.config['application']['email']['smtp_host'],
+                port=self.config['application']['email']['smtp_port'],
+                username=self.config['application']['email']['smtp_username'],
+                password=self.config['application']['email']['smtp_password'],
+                from_name=self.config['application']['email']['from_name'],
+                from_email=self.config['application']['email']['from_email'],
+                signature_path=self.config['application']['email']['signature']
+            )
+            
+            # Initialize platform applicators
+            self.platform_applicator = PlatformApplicator(
+                linkedin_config=self.config['oauth']['linkedin'],
+                indeed_config=self.config['oauth']['indeed']
+            )
+            
+            logger.info("All components initialized successfully")
+        except Exception as e:
+            logger.error(f"Error initializing components: {str(e)}")
+            raise
+            
+    def run(self):
+        """Run the main application loop."""
+        try:
+            while True:
+                # Check if we need to update resume data
+                self._update_resume_if_needed()
+                
+                # Reset daily application count if needed
+                self._reset_daily_count_if_needed()
+                
+                # Search for new jobs
+                new_jobs = self.job_searcher.search()
+                
+                # Process each new job
+                for job in new_jobs:
+                    self._process_job(job)
+                    
+                # Sleep before next iteration
+                time.sleep(60)  # Check every minute
+                
+        except KeyboardInterrupt:
+            logger.info("Application manager stopped by user")
+        except Exception as e:
+            logger.error(f"Error in main loop: {str(e)}")
+            raise
+            
+    def _update_resume_if_needed(self):
+        """Update resume data if update interval has passed."""
+        current_time = time.time()
+        if current_time - self.last_resume_update > self.config['resume']['update_interval']:
+            try:
+                # Parse resume
+                resume_data = self.resume_parser.parse(self.config['resume']['path'])
+                
+                # Update job matcher with new resume data
+                self.job_matcher.update_resume_data(resume_data)
+                
+                self.last_resume_update = current_time
+                logger.info("Resume data updated successfully")
+            except Exception as e:
+                logger.error(f"Error updating resume data: {str(e)}")
+                
+    def _reset_daily_count_if_needed(self):
+        """Reset daily application count at midnight."""
+        current_date = datetime.now().date()
+        if not hasattr(self, 'last_reset_date') or self.last_reset_date < current_date:
+            self.applications_today = 0
+            self.last_reset_date = current_date
+            logger.info("Daily application count reset")
+            
+    def _process_job(self, job: Dict):
+        """Process a single job posting."""
+        try:
+            # Check if we've already processed this job
+            if self._is_job_processed(job):
+                return
+                
+            # Check if we've hit daily limit
+            if self.applications_today >= self.config['job_search']['matching']['max_applications_per_day']:
+                logger.info("Daily application limit reached")
+                return
+                
+            # Calculate match score
+            match_score = self.job_matcher.calculate_match(job)
+            
+            # Skip if below minimum score
+            if match_score < self.config['job_search']['matching']['min_score']:
+                logger.debug(f"Job {job['id']} skipped - low match score: {match_score}")
+                return
+                
+            # Generate cover letter if enabled
+            cover_letter = None
+            if self.config['application']['cover_letter']['enabled']:
+                cover_letter = self.cover_letter_generator.generate(job)
+                
+            # Try platform-specific application first
+            application_successful = False
+            if job['platform'] in ['linkedin', 'indeed']:
+                try:
+                    application_successful = self.platform_applicator.apply(
+                        platform=job['platform'],
+                        job_id=job['id'],
+                        cover_letter=cover_letter
+                    )
+                except Exception as e:
+                    logger.error(f"Error applying through platform: {str(e)}")
+                    
+            # Fall back to email if platform application failed
+            if not application_successful and job.get('contact_email'):
+                try:
+                    self.email_sender.send_application(
+                        to_email=job['contact_email'],
+                        job_title=job['title'],
+                        company_name=job['company'],
+                        cover_letter=cover_letter,
+                        resume_path=self.config['resume']['path']
+                    )
+                    application_successful = True
+                except Exception as e:
+                    logger.error(f"Error sending application email: {str(e)}")
+                    
+            # Record application in database
+            if application_successful:
+                self._record_application(job, match_score, cover_letter)
+                self.applications_today += 1
+                logger.info(f"Successfully applied to job {job['id']}")
                 
         except Exception as e:
-            logger.error(f"Error in email fallback: {str(e)}")
-            return None
-    
-    def _get_applicator(self, url: str) -> Optional[BaseApplicator]:
-        """Get appropriate applicator for the given URL."""
-        for applicator in self.applicators:
-            if asyncio.run(applicator.is_applicable(url)):
-                return applicator
-        return None
-    
-    def _check_already_applied(self, job: Dict) -> bool:
-        """Check if already applied to a job."""
-        try:
-            # Generate filename for application record
-            filename = f"{job['platform']}_{job['company']}_{job['title']}".lower()
-            filename = "".join(c if c.isalnum() else "_" for c in filename)
-            record_file = self.history_dir / f"{filename}.json"
+            logger.error(f"Error processing job {job['id']}: {str(e)}")
             
-            return record_file.exists()
+    def _is_job_processed(self, job: Dict) -> bool:
+        """Check if we've already processed this job."""
+        existing = self.db_session.query(Job).filter_by(
+            platform=job['platform'],
+            platform_id=job['id']
+        ).first()
+        return existing is not None
+        
+    def _record_application(self, job: Dict, match_score: float, cover_letter: Optional[str]):
+        """Record application in database."""
+        try:
+            # Create job record
+            job_record = Job(
+                platform=job['platform'],
+                platform_id=job['id'],
+                title=job['title'],
+                company=job['company'],
+                location=job.get('location', ''),
+                description=job['description'],
+                url=job['url'],
+                contact_email=job.get('contact_email'),
+                match_score=match_score
+            )
+            self.db_session.add(job_record)
+            
+            # Create application record
+            application = Application(
+                job=job_record,
+                applied_at=datetime.now(),
+                cover_letter=cover_letter
+            )
+            self.db_session.add(application)
+            
+            # Save cover letter to file if present
+            if cover_letter:
+                cover_letter_dir = Path(self.config['storage']['cover_letters_dir'])
+                cover_letter_dir.mkdir(parents=True, exist_ok=True)
+                
+                filename = f"{job['company']}_{job['id']}.txt"
+                with open(cover_letter_dir / filename, 'w') as f:
+                    f.write(cover_letter)
+            
+            self.db_session.commit()
+            logger.info(f"Application recorded for job {job['id']}")
             
         except Exception as e:
-            logger.error(f"Error checking application record: {str(e)}")
-            return False
-    
-    def _save_application_result(self, job: Dict, result: ApplicationResult) -> None:
-        """Save application result to history."""
-        try:
-            # Generate filename
-            filename = f"{job['platform']}_{job['company']}_{job['title']}".lower()
-            filename = "".join(c if c.isalnum() else "_" for c in filename)
-            record_file = self.history_dir / f"{filename}.json"
-            
-            # Create record
-            record = {
-                "job": job,
-                "result": {
-                    "status": result.status,
-                    "error_message": result.error_message,
-                    "application_id": result.application_id,
-                    "applied_at": datetime.now().isoformat()
-                }
-            }
-            
-            # Save record
-            with record_file.open('w') as f:
-                json.dump(record, f, indent=2)
-            
-        except Exception as e:
-            logger.error(f"Error saving application result: {str(e)}")
-            
-    def get_application_stats(self) -> Dict:
-        """Get statistics about applications."""
-        try:
-            stats = {
-                "total": 0,
-                "success": 0,
-                "failed": 0,
-                "skipped": 0,
-                "by_platform": {},
-                "by_company": {},
-                "by_method": {
-                    "automated": 0,
-                    "email": 0
-                }
-            }
-            
-            # Process all history files
-            for file in self.history_dir.glob("*.json"):
-                try:
-                    with file.open('r') as f:
-                        record = json.load(f)
-                    
-                    # Update counts
-                    stats["total"] += 1
-                    status = record["result"]["status"]
-                    stats[status] += 1
-                    
-                    # Update platform stats
-                    platform = record["job"]["platform"]
-                    if platform not in stats["by_platform"]:
-                        stats["by_platform"][platform] = {"total": 0, "success": 0}
-                    stats["by_platform"][platform]["total"] += 1
-                    if status == "success":
-                        stats["by_platform"][platform]["success"] += 1
-                    
-                    # Update company stats
-                    company = record["job"]["company"]
-                    if company not in stats["by_company"]:
-                        stats["by_company"][company] = {"total": 0, "success": 0}
-                    stats["by_company"][company]["total"] += 1
-                    if status == "success":
-                        stats["by_company"][company]["success"] += 1
-                    
-                    # Update method stats
-                    if record["result"]["application_id"] and record["result"]["application_id"].startswith("email"):
-                        stats["by_method"]["email"] += 1
-                    else:
-                        stats["by_method"]["automated"] += 1
-                    
-                except Exception as e:
-                    logger.error(f"Error processing history file {file}: {str(e)}")
-                    continue
-            
-            return stats
-            
-        except Exception as e:
-            logger.error(f"Error getting application stats: {str(e)}")
-            return {} 
+            self.db_session.rollback()
+            logger.error(f"Error recording application: {str(e)}")
+            raise 

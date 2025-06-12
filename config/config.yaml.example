@@ -1,0 +1,97 @@
+# AutoApply.AI Example Configuration
+# Copy this file to config.yaml and update with your settings
+
+# Resume Configuration
+resume:
+  path: "data/resume.pdf"  # Path to your resume PDF
+  cache_dir: "data/cache"  # Directory to cache parsed resume data
+  update_interval: 86400   # How often to re-parse resume (in seconds)
+
+# Job Search Configuration
+job_search:
+  platforms:
+    linkedin:
+      enabled: true
+      search_interval: 3600  # How often to search (in seconds)
+      keywords: ["software engineer", "python developer"]  # Additional keywords to include in search
+      locations: ["San Francisco", "Remote"]  # Preferred locations
+      remote_only: true
+      
+    indeed:
+      enabled: true
+      search_interval: 3600
+      keywords: ["software engineer", "python developer"]
+      locations: ["San Francisco", "Remote"]
+      remote_only: true
+      
+    remotive:
+      enabled: true
+      search_interval: 3600
+      keywords: ["software engineer", "python"]
+      
+    weworkremotely:
+      enabled: true
+      search_interval: 3600
+      keywords: ["software engineer", "python"]
+      
+    greenhouse:
+      enabled: true
+      search_interval: 3600
+      keywords: ["software engineer", "python"]
+
+  # Job matching configuration
+  matching:
+    min_score: 0.5  # Minimum match score (0-1)
+    required_skills: ["python", "javascript"]  # Skills that must be present
+    preferred_skills: ["react", "aws"]  # Skills that are preferred but not required
+    excluded_keywords: ["senior", "lead"]  # Keywords to exclude from matches
+    max_applications_per_day: 50
+
+# Application Configuration
+application:
+  cover_letter:
+    enabled: true
+    template: "templates/cover_letter.txt"
+    customize: true  # Whether to customize for each job
+    
+  email:
+    enabled: true
+    from_name: "Your Name"  # Your full name
+    from_email: "your.email@example.com"  # Your email address
+    smtp_host: "smtp.gmail.com"
+    smtp_port: 587
+    smtp_username: "your.email@gmail.com"  # Your email username
+    smtp_password: "your-app-specific-password"  # Your app-specific password
+    signature: "templates/email_signature.txt"
+
+# OAuth Configuration
+oauth:
+  linkedin:
+    client_id: "your-linkedin-client-id"
+    client_secret: "your-linkedin-client-secret"
+    redirect_uri: "http://localhost:8000/callback"
+    
+  indeed:
+    client_id: "your-indeed-client-id"
+    client_secret: "your-indeed-client-secret"
+    redirect_uri: "http://localhost:8000/callback"
+
+# API Configuration
+api:
+  groq:
+    api_key: "your-groq-api-key"  # Groq API key for cover letter generation
+    model: "mixtral-8x7b-32768"  # Model to use
+    
+# Logging Configuration
+logging:
+  level: "INFO"
+  file: "logs/autoapply.log"
+  max_size: 10485760  # 10MB
+  backup_count: 5
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+# Storage Configuration
+storage:
+  applications_db: "data/applications.db"  # SQLite database for tracking applications
+  cover_letters_dir: "data/cover_letters"  # Directory to store generated cover letters
+  attachments_dir: "data/attachments"  # Directory for resume and other attachments 

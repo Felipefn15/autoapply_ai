@@ -51,3 +51,6 @@ storage/logs/*
 !storage/logs/.gitkeep
 config.json
 .env
+data/cache/*
+data/results/*
+data/output/*
