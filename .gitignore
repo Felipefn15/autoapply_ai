@@ -54,3 +54,4 @@ config.json
 data/cache/*
 data/results/*
 data/output/*
+app/resume/__pycache__/*
