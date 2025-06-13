@@ -21,8 +21,8 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
-from app.automation.applicator_manager import ApplicatorManager
-from app.email.email_sender import EmailSender
+from app.automation import BaseApplicator, LinkedInApplicator, EmailApplicator
+from app.automation.application_logger import ApplicationLogger
 
 def load_config(config_path: str) -> Dict:
     """
@@ -44,35 +44,22 @@ def load_config(config_path: str) -> Dict:
         raise
 
 def load_matches(matches_dir: str) -> List[Dict]:
-    """
-    Load matched jobs from JSON file.
+    """Load matched jobs from JSON files."""
+    matches = []
+    matches_dir = Path(matches_dir)
     
-    Args:
-        matches_dir: Directory containing matches files
-        
-    Returns:
-        List of matched jobs
-    """
     try:
-        matches_dir = Path(matches_dir)
-        
         # Get most recent matches file
-        match_files = list(matches_dir.glob("matches_*.json"))
-        if not match_files:
-            logger.error("No match files found")
-            return []
-            
-        latest_file = max(match_files, key=lambda x: x.stat().st_mtime)
-        
-        with open(latest_file, 'r') as f:
+        latest_matches = sorted(matches_dir.glob("matches_*.json"))[-1]
+        with open(latest_matches, "r") as f:
             matches = json.load(f)
             
-        logger.info(f"Loaded {len(matches)} matches from {latest_file}")
+        logger.info(f"Loaded {len(matches)} matches from {latest_matches}")
         return matches
         
     except Exception as e:
         logger.error(f"Error loading matches: {str(e)}")
-        raise
+        return []
 
 def load_resume(resume_path: str) -> str:
     """Load resume content."""
@@ -141,41 +128,67 @@ def save_results(results: List[Dict], output_dir: str):
         logger.error(f"Error saving results: {str(e)}")
         raise
 
-async def apply_to_jobs(matches: List[Dict], config: Dict, resume_path: str) -> List[Dict]:
-    """
-    Apply to matched jobs.
+async def apply_to_jobs(matches: List[Dict], config: Dict, resume_path: str) -> None:
+    """Apply to matched jobs."""
+    if not matches:
+        logger.warning("No matches to apply to")
+        return
+        
+    # Initialize applicators
+    applicators = [
+        LinkedInApplicator(config),
+        EmailApplicator(config)
+    ]
     
-    Args:
-        matches: List of matched jobs
-        config: Configuration dictionary
-        resume_path: Path to resume file
+    # Initialize logger
+    app_logger = ApplicationLogger()
+    
+    logger.info("\nStarting application process")
+    logger.info("=" * 50)
+    logger.info(f"Processing {len(matches)} matches...")
+    
+    for job in matches:
+        logger.info(f"\nProcessing job: {job.get('title', 'Unknown')} at {job.get('company', 'Unknown')}")
         
-    Returns:
-        List of application results
-    """
-    try:
-        # Initialize applicator manager with full config
-        applicator = ApplicatorManager(config)
-        
-        # Apply to each job
-        results = []
-        for match in matches:
+        # Try each applicator
+        applied = False
+        for applicator in applicators:
             try:
-                result = await applicator.apply_to_job(match)
-                results.append(result)
+                if await applicator.is_applicable(job.get('url', '')):
+                    # Try to apply
+                    result = await applicator.apply(job, {"resume_path": resume_path})
+                    applied = result.status == "success"
+                    if applied:
+                        break
+                        
             except Exception as e:
-                logger.error(f"Error applying to job {match.get('id', 'unknown')}: {str(e)}")
-                results.append({
-                    'job_id': match.get('id', 'unknown'),
-                    'success': False,
-                    'error': str(e)
-                })
+                logger.error(f"Error with {applicator.__class__.__name__}: {str(e)}")
+                continue
                 
-        return results
-        
-    except Exception as e:
-        logger.error(f"Error applying to jobs: {str(e)}")
-        raise
+        if not applied:
+            logger.warning("No suitable applicator found or all attempts failed")
+            app_logger.log_application(
+                job=job,
+                status="failed",
+                method="unknown",
+                error="No suitable applicator found or all attempts failed"
+            )
+    
+    # Show final summary
+    summary = app_logger.get_summary()
+    
+    logger.info("\nApplication Summary")
+    logger.info("=" * 50)
+    logger.info(f"Total jobs processed: {summary['total']}")
+    logger.info(f"Successfully applied: {summary['successful']}")
+    logger.info(f"Failed applications: {summary['failed']}")
+    logger.info(f"Skipped applications: {summary['skipped']}")
+    logger.info(f"Success rate: {summary['success_rate']:.1f}%")
+    
+    # Indicate where to find detailed logs
+    logger.info("\nDetailed logs saved to:")
+    logger.info(f"- JSON: data/applications/applications_{app_logger.current_session}.json")
+    logger.info(f"- Report: data/applications/applications_report_{app_logger.current_session}.txt")
 
 def generate_cover_letter(job: Dict, profile: Dict) -> str:
     """Generate a cover letter for the job."""
@@ -353,37 +366,35 @@ async def main():
     
     parser.add_argument(
         "--config",
-        help="Path to config file",
+        help="Configuration file",
         default="config/config.yaml"
     )
     
     parser.add_argument(
         "--resume",
-        help="Path to resume file",
-        default="data/resumes/resume.pdf"
+        help="Resume file path",
+        required=True
     )
     
     parser.add_argument(
         "--matches-dir",
-        help="Directory containing matches files",
+        help="Directory containing job matches",
         default="data/matches"
     )
     
     args = parser.parse_args()
     
     try:
-        # Load configuration
-        config = load_config(args.config)
-        
         # Load matches
         matches = load_matches(args.matches_dir)
-        
+        if not matches:
+            return
+            
         # Apply to jobs
-        results = await apply_to_jobs(matches, config, args.resume)
+        await apply_to_jobs(matches, {}, args.resume)
         
-        # Save results
-        save_results(results, "data/applications")
-        
+    except KeyboardInterrupt:
+        logger.info("Application process stopped by user")
     except Exception as e:
         logger.error(f"Error: {str(e)}")
         raise

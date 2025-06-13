@@ -4,55 +4,53 @@ __pycache__/
 *$py.class
 *.so
 .Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-
-# Virtual Environment
 venv/
-env/
 ENV/
+.env
 
-# IDE
+# IDEs and editors
 .idea/
 .vscode/
 *.swp
 *.swo
 .DS_Store
 
+# Project specific
+data/*
+!data/.gitkeep
+!data/resumes/.gitkeep
+!data/applications/.gitkeep
+!data/matches/.gitkeep
+!data/analysis/.gitkeep
+
+# Logs
+logs/*
+!logs/.gitkeep
+*.log
+
+# Configuration
+config/config.yaml
+.env
+
+# Templates - keep structure but ignore content
+templates/*
+!templates/.gitkeep
+!templates/cover_letter.txt.example
+!templates/email_signature.txt.example
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+
 # Testing
 .coverage
 htmlcov/
 .pytest_cache/
-.mypy_cache/
+.tox/
 
-# Project specific
-data/resumes/*
-!data/resumes/examples/
-data/jobs/*
-!data/jobs/examples/
-data/matches/*
-!data/matches/examples/
-storage/cache/*
-!storage/cache/.gitkeep
-storage/logs/*
-!storage/logs/.gitkeep
-config.json
-.env
-data/cache/*
-data/results/*
-data/output/*
-app/resume/__pycache__/*
-templates/*
+# Virtual Environment
+.python-version
+pip-log.txt
+pip-delete-this-directory.txt
+

@@ -83,6 +83,13 @@ def match_jobs(jobs: List[Dict], profile: Dict) -> List[Dict]:
         max_salary = profile.get('salary', {}).get('max', float('inf'))
         preferred_remote = profile.get('preferences', {}).get('remote', True)
         
+        logger.info("\nStarting job matching process:")
+        logger.info("=" * 50)
+        logger.info(f"Required skills: {', '.join(required_skills)}")
+        logger.info(f"Salary range: ${min_salary:,} - {'∞' if max_salary == float('inf') else f'${max_salary:,}'}")
+        logger.info(f"Remote preferred: {preferred_remote}")
+        logger.info("-" * 50)
+        
         for job in jobs:
             try:
                 # Extract skills from job description and title
@@ -90,16 +97,19 @@ def match_jobs(jobs: List[Dict], profile: Dict) -> List[Dict]:
                 
                 # From title
                 if 'title' in job:
-                    job_skills.update(extract_skills_from_text(job['title']))
+                    title_skills = extract_skills_from_text(job['title'])
+                    job_skills.update(title_skills)
                 
                 # From description
                 if 'description' in job:
-                    job_skills.update(extract_skills_from_text(job['description']))
+                    desc_skills = extract_skills_from_text(job['description'])
+                    job_skills.update(desc_skills)
                 
                 # From requirements
                 if 'requirements' in job and isinstance(job['requirements'], list):
                     for req in job['requirements']:
-                        job_skills.update(extract_skills_from_text(req))
+                        req_skills = extract_skills_from_text(req)
+                        job_skills.update(req_skills)
                 
                 # Calculate base match score from skills
                 matched_skills = required_skills & job_skills
@@ -147,6 +157,16 @@ def match_jobs(jobs: List[Dict], profile: Dict) -> List[Dict]:
                 job['application_status'] = 'pending'
                 job['application_method'] = 'direct' if 'apply_url' in job else 'email'
                 matched_jobs.append(job)
+                
+                # Log match details
+                logger.info(f"\nAnalyzing job: {job.get('title', 'Unknown')}")
+                logger.info(f"Match score: {job['match_score']}%")
+                logger.info(f"Matched skills: {', '.join(matched_skills)}")
+                logger.info(f"Missing skills: {', '.join(job['missing_skills'])}")
+                logger.info(f"Remote match: {job['remote_match']}")
+                logger.info(f"Salary match: {salary_match}")
+                logger.info(f"Application method: {job['application_method']}")
+                logger.info("-" * 50)
                     
             except Exception as e:
                 logger.error(f"Error matching job {job.get('title', 'Unknown')}: {str(e)}")
@@ -154,7 +174,33 @@ def match_jobs(jobs: List[Dict], profile: Dict) -> List[Dict]:
                 
         # Sort by match score
         matched_jobs.sort(key=lambda x: x['match_score'], reverse=True)
-        logger.info(f"Found {len(matched_jobs)} matching jobs")
+        
+        # Log summary
+        logger.info("\nMatching Summary:")
+        logger.info("=" * 50)
+        logger.info(f"Total jobs processed: {len(jobs)}")
+        logger.info(f"Jobs matched: {len(matched_jobs)}")
+        
+        score_ranges = {
+            "Excellent (80-100%)": 0,
+            "Good (60-79%)": 0,
+            "Fair (40-59%)": 0,
+            "Poor (0-39%)": 0
+        }
+        
+        for job in matched_jobs:
+            if job['match_score'] >= 80:
+                score_ranges["Excellent (80-100%)"] += 1
+            elif job['match_score'] >= 60:
+                score_ranges["Good (60-79%)"] += 1
+            elif job['match_score'] >= 40:
+                score_ranges["Fair (40-59%)"] += 1
+            else:
+                score_ranges["Poor (0-39%)"] += 1
+                
+        for range_name, count in score_ranges.items():
+            logger.info(f"{range_name}: {count} jobs")
+        
         return matched_jobs
         
     except Exception as e:

@@ -5,6 +5,12 @@ resume:
   path: "data/resumes/resume.pdf"  # Path to your resume PDF
   cache_dir: "data/cache"  # Directory to cache parsed resume data
   update_interval: 86400   # How often to re-parse resume (in seconds)
+  skills: []  # Your key skills
+  experience_years: 5  # Your years of experience
+  current_role: "Software Engineer"  # Your current role
+  education: "Bachelor's in Computer Science"  # Your education
+  first_name: "Felipe"  # Your first name
+  last_name: "Nogueira"  # Your last name
 
 # Job Search Configuration
 job_search:
@@ -12,39 +18,45 @@ job_search:
     linkedin:
       enabled: true
       search_interval: 3600  # How often to search (in seconds)
-      keywords: []  # Additional keywords to include in search
-      locations: []  # Preferred locations
+      keywords: ["software engineer", "python", "backend", "react", "javascript", "frontend", "fullstack"]  # Your search keywords
+      locations: ["Remote", "São Paulo"]  # Your preferred locations
       remote_only: true
       
     indeed:
       enabled: true
       search_interval: 3600
-      keywords: []
-      locations: []
+      keywords: ["software engineer", "python", "backend", "react", "javascript", "frontend", "fullstack"]
+      locations: ["Remote", "São Paulo"]
       remote_only: true
       
     remotive:
       enabled: true
       search_interval: 3600
-      keywords: []
+      keywords: ["software engineer", "python", "backend", "react", "javascript", "frontend", "fullstack"]
       
     weworkremotely:
       enabled: true
       search_interval: 3600
-      keywords: []
+      keywords: ["software engineer", "python", "backend", "react", "javascript", "frontend", "fullstack"]
       
     greenhouse:
       enabled: true
       search_interval: 3600
-      keywords: []
+      keywords: ["software engineer", "python", "backend", "react", "javascript", "frontend", "fullstack"]
 
   # Job matching configuration
   matching:
-    min_score: 0.5  # Minimum match score (0-1)
-    required_skills: []  # Skills that must be present
-    preferred_skills: []  # Skills that are preferred but not required
-    excluded_keywords: []  # Keywords to exclude from matches
-    max_applications_per_day: 50
+    min_score: 0.3  # Minimum match score (0-1)
+    required_skills: ["python", "git", "react", "javascript", "frontend", "fullstack"]  # Skills that must be present
+    preferred_skills: ["aws", "docker", "kubernetes"]  # Skills that are preferred but not required
+    excluded_keywords: ["lead", "manager"]  # Keywords to exclude from matches
+    max_applications_per_day: 100
+    salary_range:
+      min: 18000  # Minimum monthly salary in BRL
+      max: 55000  # Maximum monthly salary in BRL
+    experience_range:
+      min: 4  # Minimum years of experience
+      max: 9  # Maximum years of experience
 
 # Application Configuration
 application:
@@ -61,13 +73,13 @@ application:
     smtp_port: 587
     smtp_username: "felipefrancanogueira@gmail.com"
     smtp_password: "blys kjpv akel psfx"
-    signature: "templates/email_signature.txt"
+    signature_path: "templates/email_signature.txt"  # Updated to match the new EmailSender
 
   delay_between_apps: 30  # Delay in seconds between applications
   max_daily_apps: 50  # Maximum number of applications per day
   working_hours:  # Time window for sending applications (24h format)
-    start: 9  # 9 AM
-    end: 17   # 5 PM
+    start: 7  # 9 AM
+    end: 20   # 5 PM
 
 # OAuth Configuration
 oauth:
@@ -99,9 +111,11 @@ oauth:
 # API Configuration
 api:
   groq:
-    api_key: ""  # Groq API key for cover letter generation
+    api_key: ""  # Your Groq API key for email/cover letter generation
     model: "mixtral-8x7b-32768"  # Model to use
-    
+    temperature: 0.7  # Temperature for generation
+    max_tokens: 1000  # Maximum tokens for generation
+
 # Logging Configuration
 logging:
   level: "INFO"
@@ -112,6 +126,10 @@ logging:
 
 # Storage Configuration
 storage:
+  applications_dir: "data/applications"  # Directory for application logs and reports
+  matches_dir: "data/matches"  # Directory for matched jobs
+  analysis_dir: "data/analysis"  # Directory for job analysis reports
+  templates_dir: "templates"  # Directory for email and cover letter templates
   applications_db: "data/applications.db"  # SQLite database for tracking applications
   cover_letters_dir: "data/cover_letters"  # Directory to store generated cover letters
   attachments_dir: "data/attachments"      # Directory for resume and other attachments
@@ -123,7 +141,7 @@ storage:
 
 # Browser settings for web applications
 browser:
-  headless: true  # Run browser in headless mode
+  headless: false  # Run browser in visible mode for debugging
   timeout: 30  # Timeout in seconds for page loads
   user_agent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
 
@@ -140,11 +158,17 @@ rate_limits:
   linkedin:
     requests_per_hour: 100
     pause_after_error: 300  # Seconds to wait after an error
-  github:
-    requests_per_hour: 60
-    pause_after_error: 300
   indeed:
     requests_per_hour: 100
+    pause_after_error: 300
+  remotive:
+    requests_per_hour: 100
+    pause_after_error: 300
+  weworkremotely:
+    requests_per_hour: 100
+    pause_after_error: 300
+  github:
+    requests_per_hour: 60
     pause_after_error: 300
   glassdoor:
     requests_per_hour: 100

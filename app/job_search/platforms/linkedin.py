@@ -2,16 +2,31 @@
 import aiohttp
 from bs4 import BeautifulSoup
 from loguru import logger
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Tuple
 import asyncio
 import time
+import re
 from ..models import JobPosting
 
 class LinkedInScraper:
     """Scraper for LinkedIn jobs."""
     
-    def __init__(self):
-        """Initialize the LinkedIn scraper."""
+    def __init__(self, config: Optional[Dict] = None):
+        """
+        Initialize the LinkedIn scraper.
+        
+        Args:
+            config: Optional configuration dictionary
+        """
+        self.config = config or {
+            'search': {
+                'keywords': ['software engineer', 'developer', 'python', 'typescript', 'react'],
+                'location': 'Remote',
+                'max_jobs': 100,
+                'delay_between_requests': 2
+            }
+        }
+        
         self.base_url = "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search"
         self.headers = {
             "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
@@ -25,130 +40,95 @@ class LinkedInScraper:
         self.retry_count = 3
         self.retry_delay = 5  # seconds
 
-    async def search(self, keywords: List[str], location: Optional[str] = None) -> List[JobPosting]:
+    async def search(self) -> List[JobPosting]:
         """
         Search for jobs on LinkedIn.
         
-        Args:
-            keywords: List of keywords to search for
-            location: Optional location to filter by
-            
         Returns:
             List of JobPosting objects
         """
-        jobs = []
-        
         try:
-            # Build search query
-            keywords_str = " ".join(keywords)
-            location_str = location if location else "Remote"
-            
-            # Search parameters
+            # Use LinkedIn API
+            api_url = "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search"
             params = {
-                "keywords": keywords_str,
-                "location": location_str,
-                "f_WT": "2",  # Remote jobs filter
-                "f_TPR": "r86400",  # Last 24 hours
-                "start": "0",
-                "sortBy": "DD"  # Sort by date
+                "keywords": " ".join(self.config['search']['keywords']),
+                "location": self.config['search']['location'],
+                "start": 0
             }
             
-            async with aiohttp.ClientSession() as session:
-                start = 0
-                while True:
-                    try:
-                        # Update start position
-                        params["start"] = str(start)
-                        
-                        # Apply rate limiting
-                        self.rate_limiter.wait_if_needed()
-                        
-                        # Make request with retries
-                        for attempt in range(self.retry_count):
-                            try:
-                                async with session.get(self.base_url, params=params, headers=self.headers) as response:
-                                    if response.status == 200:
-                                        html = await response.text()
-                                        break
-                                    elif response.status == 429:  # Too Many Requests
-                                        logger.warning("Rate limit hit, waiting longer...")
-                                        await asyncio.sleep(self.retry_delay * (attempt + 1))
-                                        continue
-                                    else:
-                                        logger.error(f"LinkedIn API error: {response.status}")
-                                        break
-                            except aiohttp.ClientError as e:
-                                if attempt < self.retry_count - 1:
-                                    await asyncio.sleep(self.retry_delay * (attempt + 1))
-                                    continue
-                                raise
-                                
-                        soup = BeautifulSoup(html, 'html.parser')
-                        
-                        # Find all job cards
-                        job_cards = soup.find_all('div', {'class': 'job-search-card'})
-                        if not job_cards:
+            logger.info(f"Searching LinkedIn with params: {params}")
+            
+            jobs = []
+            while len(jobs) < self.config['search']['max_jobs']:
+                # Make API request
+                async with aiohttp.ClientSession() as session:
+                    logger.info(f"Making request to {api_url} with start={params['start']}")
+                    async with session.get(api_url, params=params, headers=self.headers) as response:
+                        if response.status != 200:
+                            logger.error(f"LinkedIn API returned status {response.status}")
                             break
                             
+                        html = await response.text()
+                        if not html:
+                            logger.error("LinkedIn API returned empty response")
+                            break
+                            
+                        # Parse job cards
+                        soup = BeautifulSoup(html, 'html.parser')
+                        job_cards = soup.find_all('div', {'class': 'job-search-card'})
+                        
+                        if not job_cards:
+                            logger.info("No more job cards found")
+                            break
+                            
+                        logger.info(f"Found {len(job_cards)} job cards")
+                        
+                        # Process each job card
                         for card in job_cards:
+                            if len(jobs) >= self.config['search']['max_jobs']:
+                                break
+                                
                             try:
                                 # Extract job details
-                                title_elem = card.find('h3', {'class': 'base-search-card__title'})
-                                company_elem = card.find('h4', {'class': 'base-search-card__subtitle'})
-                                location_elem = card.find('span', {'class': 'job-search-card__location'})
-                                link_elem = card.find('a', {'class': 'base-card__full-link'})
+                                title = card.find('h3', {'class': 'base-search-card__title'}).text.strip()
+                                company = card.find('h4', {'class': 'base-search-card__subtitle'}).text.strip()
+                                location = card.find('span', {'class': 'job-search-card__location'}).text.strip()
+                                link = card.find('a', {'class': 'base-card__full-link'})['href']
                                 
-                                if not all([title_elem, company_elem, location_elem, link_elem]):
-                                    continue
+                                logger.info(f"Processing job: {title} at {company}")
                                 
-                                title = title_elem.get_text(strip=True)
-                                company = company_elem.get_text(strip=True)
-                                location = location_elem.get_text(strip=True)
-                                url = link_elem['href'].split('?')[0]  # Remove tracking parameters
-                                
-                                # Get detailed job info
-                                details = await self._get_job_details(session, url)
-                                
-                                # Create JobPosting object
+                                # Create job posting
+                                salary_range = await self._extract_salary(link)
                                 job = JobPosting(
                                     title=title,
                                     company=company,
                                     location=location,
-                                    description=details.get('description', ''),
-                                    url=url,
-                                    source='LinkedIn',
-                                    remote='remote' in location.lower() or details.get('remote', False),
-                                    salary_min=details.get('salary_min'),
-                                    salary_max=details.get('salary_max'),
-                                    requirements=details.get('requirements', [])
+                                    url=link,
+                                    platform='linkedin',
+                                    description=await self._get_job_description(link),
+                                    requirements=await self._extract_requirements(link),
+                                    remote='remote' in location.lower(),
+                                    salary_min=salary_range[0] if salary_range else None,
+                                    salary_max=salary_range[1] if salary_range else None
                                 )
-                                
                                 jobs.append(job)
                                 
                             except Exception as e:
-                                logger.error(f"Error processing job card: {str(e)}")
+                                logger.error(f"Error processing LinkedIn job card: {str(e)}")
                                 continue
                                 
-                        # Break if we have enough jobs
-                        if len(jobs) >= 100:  # Limit to 100 jobs per search
-                            break
-                            
-                        # Next page
-                        start += len(job_cards)
+                        # Update start parameter for next page
+                        params['start'] += len(job_cards)
                         
-                        # Add delay between pages
-                        await asyncio.sleep(2)
-                        
-                    except Exception as e:
-                        logger.error(f"Error fetching LinkedIn jobs page: {str(e)}")
-                        break
+                        # Add delay between requests
+                        await asyncio.sleep(self.config['search']['delay_between_requests'])
             
             logger.info(f"Found {len(jobs)} jobs on LinkedIn")
             return jobs
             
         except Exception as e:
-            logger.error(f"Error searching LinkedIn jobs: {str(e)}")
-            return jobs
+            logger.error(f"Error searching LinkedIn: {str(e)}")
+            return []
 
     async def _get_job_details(self, session: aiohttp.ClientSession, url: str) -> Dict:
         """Get detailed job information from job page."""
@@ -200,6 +180,114 @@ class LinkedInScraper:
         except Exception as e:
             logger.error(f"Error getting job details: {str(e)}")
             return details 
+
+    async def _get_job_description(self, url: str) -> str:
+        """Get job description from job page."""
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url, headers=self.headers) as response:
+                    if response.status != 200:
+                        return ""
+                        
+                    html = await response.text()
+                    soup = BeautifulSoup(html, 'html.parser')
+                    
+                    # Get job description
+                    desc_elem = soup.find('div', {'class': 'description__text'})
+                    if desc_elem:
+                        return desc_elem.get_text(strip=True)
+                    
+                    return ""
+                    
+        except Exception as e:
+            logger.error(f"Error getting job description: {str(e)}")
+            return ""
+
+    async def _extract_requirements(self, url: str) -> List[str]:
+        """Extract requirements from job page."""
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url, headers=self.headers) as response:
+                    if response.status != 200:
+                        return []
+                        
+                    html = await response.text()
+                    soup = BeautifulSoup(html, 'html.parser')
+                    
+                    # Get job description
+                    desc_elem = soup.find('div', {'class': 'description__text'})
+                    if not desc_elem:
+                        return []
+                        
+                    text = desc_elem.get_text().lower()
+                    requirements = []
+                    
+                    # Look for requirements section
+                    req_keywords = ['requirements:', 'qualifications:', 'what you need:', 'what we need:']
+                    for line in text.split('\n'):
+                        line = line.strip()
+                        if any(kw in line.lower() for kw in req_keywords):
+                            requirements.extend([r.strip() for r in line.split('•') if r.strip()])
+                            
+                    return requirements
+                    
+        except Exception as e:
+            logger.error(f"Error extracting requirements: {str(e)}")
+            return []
+
+    async def _extract_salary(self, url: str) -> Optional[Tuple[float, float]]:
+        """Extract salary information from job page."""
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url, headers=self.headers) as response:
+                    if response.status != 200:
+                        return None
+                        
+                    html = await response.text()
+                    soup = BeautifulSoup(html, 'html.parser')
+                    
+                    # Get job description
+                    desc_elem = soup.find('div', {'class': 'description__text'})
+                    if not desc_elem:
+                        return None
+                        
+                    text = desc_elem.get_text().lower()
+                    
+                    # Try to find salary information
+                    patterns = [
+                        r'(?:salary|compensation|pay).*?(?:\$|€|£)\s*(\d+(?:,\d{3})*(?:\.\d{2})?)\s*(?:-|to|–)\s*(?:\$|€|£)\s*(\d+(?:,\d{3})*(?:\.\d{2})?)',
+                        r'(?:\$|€|£)\s*(\d+(?:,\d{3})*(?:\.\d{2})?)\s*(?:-|to|–)\s*(?:\$|€|£)\s*(\d+(?:,\d{3})*(?:\.\d{2})?)',
+                        r'(?:salary|compensation|pay).*?(?:\$|€|£)\s*(\d+(?:,\d{3})*(?:\.\d{2})?)\s*(?:k|K)',
+                        r'(?:\$|€|£)\s*(\d+(?:,\d{3})*(?:\.\d{2})?)\s*(?:k|K)'
+                    ]
+                    
+                    for pattern in patterns:
+                        match = re.search(pattern, text, re.IGNORECASE)
+                        if match:
+                            # If range found
+                            if len(match.groups()) == 2:
+                                min_salary = float(match.group(1).replace(',', ''))
+                                max_salary = float(match.group(2).replace(',', ''))
+                                
+                                # Convert k to thousands
+                                if 'k' in text[match.start():match.end()].lower():
+                                    min_salary *= 1000
+                                    max_salary *= 1000
+                                    
+                                return (min_salary, max_salary)
+                            # If single value found
+                            else:
+                                salary = float(match.group(1).replace(',', ''))
+                                if 'k' in text[match.start():match.end()].lower():
+                                    salary *= 1000
+                                # Use ±10% range
+                                return (salary * 0.9, salary * 1.1)
+                                
+                    return None
+                    
+        except Exception as e:
+            logger.error(f"Error extracting salary: {str(e)}")
+            return None
 
 class RateLimiter:
     """Simple rate limiter for API calls."""

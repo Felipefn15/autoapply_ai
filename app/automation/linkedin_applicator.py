@@ -2,6 +2,8 @@
 LinkedIn Applicator Module - Handles job applications on LinkedIn
 """
 from typing import Dict, Optional
+import asyncio
+from pathlib import Path
 import re
 import time
 from urllib.parse import urlparse
@@ -19,112 +21,216 @@ class LinkedInApplicator(BaseApplicator):
         super().__init__(config)
         self.page = None  # Will be set when needed
         self.session_valid_until = None
+        self.linkedin_email = config.get('linkedin_email', '')
+        self.linkedin_password = config.get('linkedin_password', '')
         
     async def is_applicable(self, url: str) -> bool:
         """Check if this applicator can handle the given URL."""
-        return 'linkedin.com' in url.lower()
+        return bool(url and 'linkedin.com' in url.lower())
         
     async def login_if_needed(self) -> bool:
-        """Perform LinkedIn login if required."""
+        """Login to LinkedIn if not already logged in."""
         try:
-            # Check if we're already logged in
-            if self.session_valid_until and time.time() < self.session_valid_until:
+            # Check if already logged in
+            if await self._is_logged_in():
+                logger.debug("Already logged in to LinkedIn")
                 return True
                 
-            # Check if login is needed by looking for sign-in button
-            sign_in_button = await self.page.query_selector("a[href*='signin']")
-            if not sign_in_button:
-                # No sign-in button found, we might be logged in
-                profile_button = await self.page.query_selector("button[aria-label*='Me']")
-                if profile_button:
-                    # Update session validity (24 hours from now)
-                    self.session_valid_until = time.time() + 24 * 60 * 60
-                    return True
-                    
-            # Navigate to login page if not already there
-            if not await self.page.query_selector("input[id='username']"):
-                await sign_in_button.click()
-                await self.page.wait_for_load_state('networkidle')
-                
-            # Fill login form
-            await self.safe_fill("input[id='username']", self.config['username'])
-            await self.safe_fill("input[id='password']", self.config['password'])
+            logger.info("Logging in to LinkedIn...")
             
-            # Submit login form
-            submit_button = await self.page.query_selector("button[type='submit']")
-            if submit_button:
-                await submit_button.click()
-                await self.page.wait_for_load_state('networkidle')
+            # Go to login page
+            await self.page.goto('https://www.linkedin.com/login')
+            await self.page.wait_for_load_state('networkidle')
+            
+            # Fill login form
+            await self.safe_fill('#username', self.linkedin_email)
+            await self.safe_fill('#password', self.linkedin_password)
+            
+            # Click login button
+            await self.safe_click('button[type="submit"]')
+            
+            # Wait for login to complete
+            await self.page.wait_for_load_state('networkidle')
+            
+            # Verify login success
+            if await self._is_logged_in():
+                logger.info("Successfully logged in to LinkedIn")
+                return True
                 
-                # Verify login success
-                profile_button = await self.page.query_selector("button[aria-label*='Me']")
-                if profile_button:
-                    # Update session validity (24 hours from now)
-                    self.session_valid_until = time.time() + 24 * 60 * 60
-                    logger.info("Successfully logged in to LinkedIn")
-                    return True
-                    
-            logger.error("Failed to login to LinkedIn")
+            logger.error("Failed to log in to LinkedIn")
             return False
             
         except Exception as e:
-            logger.error(f"Error during LinkedIn login: {str(e)}")
+            logger.error(f"Error logging in to LinkedIn: {str(e)}")
             return False
             
     async def apply(self, job_data: Dict, resume_data: Dict) -> ApplicationResult:
-        """Apply to a job on LinkedIn."""
+        """Apply to the job on LinkedIn."""
         try:
-            # Navigate to job page
+            # Go to job page
             await self.page.goto(job_data['url'])
             await self.page.wait_for_load_state('networkidle')
             
-            # Handle cookie popup if present
-            await self.handle_cookies_popup()
+            # Check if already applied
+            if await self._is_already_applied():
+                return self.create_result(
+                    job_data=job_data,
+                    status='skipped',
+                    notes='Already applied to this job'
+                )
+                
+            # Find and click apply button
+            apply_button = await self._find_apply_button()
+            if not apply_button:
+                return self.create_result(
+                    job_data=job_data,
+                    status='failed',
+                    error='Apply button not found'
+                )
+                
+            await apply_button.click()
+            await self.page.wait_for_load_state('networkidle')
             
-            # Check if we need to login
-            if not await self.login_if_needed():
-                return self.create_result(job_data, 'failed', 'Login required but failed')
+            # Handle application form
+            success = await self._fill_application_form(resume_data)
+            if not success:
+                return self.create_result(
+                    job_data=job_data,
+                    status='failed',
+                    error='Failed to fill application form'
+                )
                 
-            # Look for Easy Apply button
-            easy_apply_button = await self.page.query_selector("button[aria-label*='Easy Apply']")
-            if not easy_apply_button:
-                return self.create_result(job_data, 'skipped', 'No Easy Apply button found')
+            # Submit application
+            submit_button = await self._find_submit_button()
+            if not submit_button:
+                return self.create_result(
+                    job_data=job_data,
+                    status='failed',
+                    error='Submit button not found'
+                )
                 
-            # Start application process
-            await easy_apply_button.click()
-            await self.page.wait_for_timeout(self.automation_delay * 1000)
+            await submit_button.click()
+            await self.page.wait_for_load_state('networkidle')
             
-            # Process application steps
-            while True:
-                # Check for common form fields
-                await self._fill_common_fields(resume_data)
+            # Verify submission
+            if await self._verify_submission():
+                return self.create_result(
+                    job_data=job_data,
+                    status='success',
+                    notes='Application submitted successfully'
+                )
                 
-                # Look for next or submit button
-                next_button = await self.page.query_selector("button[aria-label*='Continue']")
-                submit_button = await self.page.query_selector("button[aria-label*='Submit']")
-                
-                if submit_button:
-                    # Final step - submit application
-                    await submit_button.click()
-                    await self.page.wait_for_timeout(self.automation_delay * 1000)
-                    
-                    # Check for success confirmation
-                    success_element = await self.page.query_selector("div[aria-label*='application submitted']")
-                    if success_element:
-                        return self.create_result(job_data, 'success')
-                    else:
-                        return self.create_result(job_data, 'failed', 'Could not confirm submission')
-                elif next_button:
-                    # Move to next step
-                    await next_button.click()
-                    await self.page.wait_for_timeout(self.automation_delay * 1000)
-                else:
-                    # No more buttons found
-                    return self.create_result(job_data, 'failed', 'Could not complete application flow')
-                    
+            return self.create_result(
+                job_data=job_data,
+                status='failed',
+                error='Failed to verify submission'
+            )
+            
         except Exception as e:
-            logger.error(f"Error applying to LinkedIn job: {str(e)}")
-            return self.create_result(job_data, 'failed', str(e))
+            logger.error(f"Error applying on LinkedIn: {str(e)}")
+            return self.create_result(
+                job_data=job_data,
+                status='failed',
+                error=str(e)
+            )
+            
+    async def _is_logged_in(self) -> bool:
+        """Check if logged in to LinkedIn."""
+        try:
+            # Look for elements that indicate logged-in state
+            profile_nav = await self.page.query_selector('nav[aria-label="Primary"]')
+            return bool(profile_nav)
+        except Exception:
+            return False
+            
+    async def _is_already_applied(self) -> bool:
+        """Check if already applied to the job."""
+        try:
+            applied_text = await self.page.query_selector_all('text="You applied to this job"')
+            return bool(applied_text)
+        except Exception:
+            return False
+            
+    async def _find_apply_button(self) -> Optional[Page]:
+        """Find the apply button on the job page."""
+        try:
+            # Try different button selectors
+            selectors = [
+                'button:has-text("Apply")',
+                'button:has-text("Easy Apply")',
+                'a:has-text("Apply")',
+                'a:has-text("Easy Apply")'
+            ]
+            
+            for selector in selectors:
+                button = await self.page.query_selector(selector)
+                if button:
+                    return button
+                    
+            return None
+            
+        except Exception:
+            return None
+            
+    async def _find_submit_button(self) -> Optional[Page]:
+        """Find the submit button on the application form."""
+        try:
+            # Try different button selectors
+            selectors = [
+                'button:has-text("Submit")',
+                'button:has-text("Submit application")',
+                'button[type="submit"]'
+            ]
+            
+            for selector in selectors:
+                button = await self.page.query_selector(selector)
+                if button:
+                    return button
+                    
+            return None
+            
+        except Exception:
+            return None
+            
+    async def _fill_application_form(self, resume_data: Dict) -> bool:
+        """Fill out the application form."""
+        try:
+            # Upload resume if needed
+            resume_upload = await self.page.query_selector('input[type="file"]')
+            if resume_upload:
+                await self.upload_resume(
+                    selector='input[type="file"]',
+                    resume_path=resume_data.get('resume_path', '')
+                )
+                
+            # Fill any additional fields
+            # TODO: Handle other common form fields
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error filling form: {str(e)}")
+            return False
+            
+    async def _verify_submission(self) -> bool:
+        """Verify that the application was submitted successfully."""
+        try:
+            # Look for success indicators
+            success_texts = [
+                'Application submitted',
+                'Successfully submitted',
+                'Thank you for applying'
+            ]
+            
+            for text in success_texts:
+                element = await self.page.query_selector(f'text="{text}"')
+                if element:
+                    return True
+                    
+            return False
+            
+        except Exception:
+            return False
             
     async def _fill_common_fields(self, resume_data: Dict) -> None:
         """Fill common form fields found in LinkedIn applications."""

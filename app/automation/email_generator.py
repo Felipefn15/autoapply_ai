@@ -7,6 +7,46 @@ import json
 from loguru import logger
 from groq import Groq
 
+def generate_email(job_data: Dict, resume_data: Dict) -> str:
+    """
+    Generate an application email for a job.
+    
+    Args:
+        job_data: Job posting data
+        resume_data: Resume data
+        
+    Returns:
+        Generated email body text
+    """
+    try:
+        # Create default email content
+        default_email = f"""Dear Hiring Manager,
+
+I am writing to express my interest in the {job_data.get('title', 'open')} position at {job_data.get('company', 'your company')}.
+
+With {resume_data.get('experience_years', 'several')} years of experience in the field, I believe I would be a great fit for this role. My skills include {', '.join(resume_data.get('skills', [])[:3])}.
+
+I would welcome the opportunity to discuss how my experience aligns with your needs.
+
+Best regards,
+{resume_data.get('first_name', '')} {resume_data.get('last_name', '')}"""
+
+        # Try to use EmailGenerator if config is available
+        if 'api' in job_data.get('config', {}):
+            try:
+                generator = EmailGenerator(job_data['config'])
+                email_content = generator.generate_application_email(job_data, resume_data)
+                return email_content['body']
+            except Exception as e:
+                logger.warning(f"Failed to use EmailGenerator, falling back to default: {str(e)}")
+                return default_email
+        else:
+            return default_email
+            
+    except Exception as e:
+        logger.error(f"Error generating email: {str(e)}")
+        return default_email
+
 class EmailGenerator:
     """Generates application emails using LLM."""
     
@@ -35,10 +75,10 @@ class EmailGenerator:
             The email should be concise, highlight relevant experience, and express genuine interest.
             
             Job Details:
-            - Title: {job_data['title']}
-            - Company: {job_data['company']}
-            - Description: {job_data['description']}
-            - Requirements: {job_data['requirements']}
+            - Title: {job_data.get('title', 'Not specified')}
+            - Company: {job_data.get('company', 'Not specified')}
+            - Description: {job_data.get('description', 'Not specified')}
+            - Requirements: {job_data.get('requirements', 'Not specified')}
             
             Candidate Details:
             - Experience: {resume_data.get('experience_years', 'Not specified')} years
@@ -81,10 +121,10 @@ class EmailGenerator:
         except Exception as e:
             logger.error(f"Error generating application email: {str(e)}")
             return {
-                'subject': f"Application for {job_data['title']} position",
+                'subject': f"Application for {job_data.get('title', '')} position",
                 'body': f"""Dear Hiring Manager,
 
-I am writing to express my interest in the {job_data['title']} position at {job_data['company']}.
+I am writing to express my interest in the {job_data.get('title', '')} position at {job_data.get('company', '')}.
 
 With {resume_data.get('experience_years', 'several')} years of experience in the field, I believe I would be a great fit for this role. My skills include {', '.join(resume_data.get('skills', [])[:3])}.
 
@@ -92,4 +132,6 @@ I would welcome the opportunity to discuss how my experience aligns with your ne
 
 Best regards,
 {resume_data.get('first_name', '')} {resume_data.get('last_name', '')}"""
-            } 
+            }
+
+__all__ = ['generate_email', 'EmailGenerator'] 

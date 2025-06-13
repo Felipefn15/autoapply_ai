@@ -43,6 +43,9 @@ def load_data(jobs_dir: str, applications_dir: str) -> Tuple[List[Dict], List[Di
 
 def analyze_jobs(jobs: List[Dict]) -> Dict:
     """Analyze job data."""
+    logger.info("\nStarting Job Analysis")
+    logger.info("=" * 50)
+    
     analysis = {
         "total_jobs": len(jobs),
         "jobs_by_platform": Counter(),
@@ -67,9 +70,11 @@ def analyze_jobs(jobs: List[Dict]) -> Dict:
     
     total_salary = 0
     
+    logger.info(f"Processing {len(jobs)} jobs...")
+    
     for job in jobs:
         # Count by platform
-        analysis["jobs_by_platform"][job["source"]] += 1
+        analysis["jobs_by_platform"][job["platform"]] += 1
         
         # Count locations
         if job["location"]:
@@ -131,28 +136,94 @@ def analyze_jobs(jobs: List[Dict]) -> Dict:
     if analysis["salary_stats"]["min_salary"] == float("inf"):
         analysis["salary_stats"]["min_salary"] = 0
         
+    # Log analysis results
+    logger.info("\nAnalysis Results:")
+    logger.info("-" * 50)
+    logger.info(f"Total Jobs Found: {analysis['total_jobs']}")
+    logger.info(f"Remote Jobs: {analysis['remote_jobs']} ({(analysis['remote_jobs']/analysis['total_jobs'])*100:.1f}%)")
+    
+    logger.info("\nJobs by Platform:")
+    for platform, count in analysis["jobs_by_platform"].most_common():
+        logger.info(f"  {platform}: {count} jobs")
+    
+    if analysis["salary_stats"]["jobs_with_salary"] > 0:
+        logger.info("\nSalary Statistics (Monthly):")
+        logger.info(f"  Jobs with Salary: {analysis['salary_stats']['jobs_with_salary']}")
+        logger.info(f"  Minimum: ${analysis['salary_stats']['min_salary']:,.2f}")
+        logger.info(f"  Average: ${analysis['salary_stats']['avg_salary']:,.2f}")
+        logger.info(f"  Maximum: ${analysis['salary_stats']['max_salary']:,.2f}")
+    
+    logger.info("\nTop Companies:")
+    for company, count in analysis["companies"].most_common(5):
+        logger.info(f"  {company}: {count} jobs")
+    
+    logger.info("\nTop Requirements:")
+    for req, count in analysis["requirements"].most_common(10):
+        logger.info(f"  {req}: {count} jobs")
+    
+    logger.info("\nCore Technologies:")
+    for tech, count in analysis["core_tech_jobs"].items():
+        if count > 0:
+            logger.info(f"  {tech}: {count} jobs ({(count/analysis['total_jobs'])*100:.1f}%)")
+    
     return analysis
 
 def analyze_applications(applications: List[Dict]) -> Dict:
     """Analyze application data."""
+    logger.info("\nAnalyzing Applications")
+    logger.info("=" * 50)
+    
     analysis = {
         "total_applications": len(applications),
         "successful": 0,
         "failed": 0,
-        "success_rate": 0
+        "success_rate": 0,
+        "methods": Counter(),
+        "platforms": Counter(),
+        "errors": Counter()
     }
     
     for app in applications:
+        # Count success/failure
         if app.get("success", False):
             analysis["successful"] += 1
         else:
             analysis["failed"] += 1
+            
+        # Count methods
+        analysis["methods"][app.get("method", "unknown")] += 1
+        
+        # Count platforms
+        analysis["platforms"][app.get("platform", "unknown")] += 1
+        
+        # Count errors
+        if error := app.get("error"):
+            analysis["errors"][error] += 1
             
     if analysis["total_applications"] > 0:
         analysis["success_rate"] = (
             analysis["successful"] / analysis["total_applications"]
         ) * 100
         
+    # Log application analysis
+    logger.info(f"\nTotal Applications: {analysis['total_applications']}")
+    logger.info(f"Successful: {analysis['successful']}")
+    logger.info(f"Failed: {analysis['failed']}")
+    logger.info(f"Success Rate: {analysis['success_rate']:.1f}%")
+    
+    logger.info("\nApplication Methods:")
+    for method, count in analysis["methods"].most_common():
+        logger.info(f"  {method}: {count}")
+    
+    logger.info("\nPlatforms:")
+    for platform, count in analysis["platforms"].most_common():
+        logger.info(f"  {platform}: {count}")
+    
+    if analysis["errors"]:
+        logger.info("\nCommon Errors:")
+        for error, count in analysis["errors"].most_common():
+            logger.info(f"  {error}: {count}")
+    
     return analysis
 
 def generate_visualizations(jobs_analysis: Dict, output_dir: str):

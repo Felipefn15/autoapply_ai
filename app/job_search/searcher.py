@@ -2,7 +2,9 @@
 Job Search Module - Search for jobs across multiple platforms
 """
 import asyncio
+import os
 from typing import Dict, List, Optional
+from dotenv import load_dotenv
 
 from loguru import logger
 
@@ -20,46 +22,100 @@ from .platforms import LinkedInScraper, HackerNewsScraper
 class JobSearcher:
     """Job searcher class."""
     
-    def __init__(self):
-        """Initialize the job searcher."""
+    def __init__(self, config: Optional[Dict] = None):
+        """
+        Initialize the job searcher.
+        
+        Args:
+            config: Optional configuration dictionary
+        """
+        # Load environment variables
+        load_dotenv()
+        
+        self.config = config or {
+            'search': {
+                'keywords': os.getenv('PRIMARY_SKILLS', 'software engineer,developer,python').split(','),
+                'max_jobs': int(os.getenv('MAX_APPLICATIONS_PER_DAY', '20')),
+                'delay_between_requests': 5,
+                'remote_only': os.getenv('REMOTE_ONLY', 'true').lower() == 'true'
+            },
+            'credentials': {
+                'linkedin': {
+                    'email': os.getenv('LINKEDIN_EMAIL'),
+                    'password': os.getenv('LINKEDIN_PASSWORD')
+                }
+            }
+        }
+        
+        # Initialize scrapers with configuration
         self.scrapers = [
-            LinkedInScraper(),
-            HackerNewsScraper()
+            LinkedInScraper(self.config),
+            HackerNewsScraper(self.config)
         ]
 
-    async def search(self, keywords: List[str], location: Optional[str] = None) -> List[JobPosting]:
+    async def search(self, keywords: Optional[List[str]] = None) -> List[JobPosting]:
         """
         Search for jobs across all platforms.
         
         Args:
-            keywords: List of keywords to search for
-            location: Optional location to filter by
+            keywords: Optional list of keywords to search for. If not provided, uses config keywords.
             
         Returns:
-            List of JobPosting objects
+            List of JobPosting objects with only title, description and email
         """
+        if keywords:
+            # Update config with provided keywords
+            self.config['search']['keywords'] = keywords
+            
         all_jobs = []
         
         try:
+            logger.info(f"Starting job search with keywords: {', '.join(self.config['search']['keywords'])}")
+            
             # Create tasks for each scraper
             tasks = []
             for scraper in self.scrapers:
-                task = asyncio.create_task(scraper.search(keywords, location))
+                logger.info(f"Initializing search on {scraper.__class__.__name__}")
+                task = asyncio.create_task(scraper.search())
                 tasks.append(task)
             
             # Wait for all scrapers to complete
             results = await asyncio.gather(*tasks, return_exceptions=True)
             
             # Process results
-            for result in results:
+            for scraper, result in zip(self.scrapers, results):
+                platform = scraper.__class__.__name__
                 if isinstance(result, Exception):
-                    logger.error(f"Scraper error: {str(result)}")
+                    logger.error(f"Error in {platform}: {str(result)}")
                     continue
                     
                 if isinstance(result, list):
-                    all_jobs.extend(result)
+                    logger.info(f"\nResults from {platform}:")
+                    logger.info("=" * 50)
+                    
+                    # Convert each job to simplified format
+                    for job in result:
+                        simplified_job = JobPosting(
+                            title=job.title,
+                            description=job.description,
+                            email=None,  # Email será extraído posteriormente se necessário
+                            url=job.url
+                        )
+                        all_jobs.append(simplified_job)
+                        
+                        # Log job details
+                        logger.info(f"Title: {job.title}")
+                        logger.info(f"URL: {job.url}")
+                        logger.info("-" * 50)
             
-            logger.info(f"Found {len(all_jobs)} total jobs")
+            logger.info(f"\nSearch Summary:")
+            logger.info("=" * 50)
+            logger.info(f"Total jobs found: {len(all_jobs)}")
+            for scraper in self.scrapers:
+                platform = scraper.__class__.__name__
+                platform_jobs = [j for j in all_jobs if platform.lower() in j.url.lower()]
+                logger.info(f"{platform}: {len(platform_jobs)} jobs")
+            
             return all_jobs
             
         except Exception as e:

@@ -1,1 +1,0 @@
-2025-06-12 09:24:05.235 | ERROR    | __main__:main:281 - Application error: Client.__init__() got an unexpected keyword argument 'proxies'

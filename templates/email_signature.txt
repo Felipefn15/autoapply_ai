@@ -1,8 +1,10 @@
 Best regards,
-Felipe França Nogueira
-Full Stack Developer
-LinkedIn: https://www.linkedin.com/in/felipefrancanogueira/
-GitHub: https://github.com/felipefranca
+Felipe Nogueira
+Software Engineer
+
+LinkedIn: https://linkedin.com/in/felipenogueira
+GitHub: https://github.com/felipenogueira
+Portfolio: https://felipenogueira.dev
 
 Email: [your.email@example.com]
 Phone: [+1 (555) 123-4567]

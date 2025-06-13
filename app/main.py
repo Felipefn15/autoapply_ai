@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-AutoApply.AI - Main Application Script
+AutoApply.AI - Main Application
 """
 import os
 import sys
@@ -13,38 +13,67 @@ from typing import Dict, List, Optional
 import yaml
 from loguru import logger
 
-def load_config(config_path: str) -> Dict:
-    """
-    Load configuration from YAML file.
-    
-    Args:
-        config_path: Path to config file
-        
-    Returns:
-        Configuration dictionary
-    """
+def load_config(config_path: str = "config/config.yaml") -> Dict:
+    """Load configuration from YAML file."""
     try:
         with open(config_path, 'r') as f:
             config = yaml.safe_load(f)
-            logger.info("Loaded configuration")
-            return config
+        logger.info("Loaded configuration")
+        return config
     except Exception as e:
-        logger.error(f"Error loading configuration: {str(e)}")
-        raise
+        logger.error(f"Error loading config: {str(e)}")
+        return {}
 
-def run_script(script_name: str, *args) -> None:
-    """
-    Run a Python script with arguments.
-    
-    Args:
-        script_name: Name of the script to run
-        *args: Additional arguments to pass to the script
-    """
+async def run_script(script_name: str, config_path: str = "config/config.yaml", 
+                    resume_path: str = "data/resumes/resume.pdf",
+                    matches_dir: str = "data/matches") -> bool:
+    """Run a script and handle its output."""
     try:
-        cmd = ['python', f'scripts/{script_name}.py'] + list(args)
         logger.info(f"Running {script_name}")
-        subprocess.run(cmd, check=True)
+        
+        # Ensure required directories exist
+        Path("data/matches").mkdir(parents=True, exist_ok=True)
+        Path("data/applications").mkdir(parents=True, exist_ok=True)
+        Path("data/analysis").mkdir(parents=True, exist_ok=True)
+        
+        # Build command with arguments
+        cmd = ["python", f"scripts/{script_name}.py"]
+        
+        # Add common arguments
+        cmd.extend(["--config", config_path])
+        
+        # Add script-specific arguments
+        if script_name in ["match_jobs", "apply_jobs"]:
+            cmd.extend(["--matches-dir", matches_dir])
+            
+        if script_name == "apply_jobs":
+            cmd.extend(["--resume", resume_path])
+            
+        # Run script and capture output
+        process = subprocess.run(
+            cmd,
+            check=True,
+            text=True,
+            capture_output=True
+        )
+        
+        # Log output
+        if process.stdout:
+            logger.info(process.stdout)
+        if process.stderr:
+            logger.warning(process.stderr)
+            
+        return True
+        
     except subprocess.CalledProcessError as e:
+        logger.error(f"Error running {script_name}: {str(e)}")
+        if e.output:
+            logger.error(e.output)
+        if e.stderr:
+            logger.error(e.stderr)
+        raise
+        
+    except Exception as e:
         logger.error(f"Error running {script_name}: {str(e)}")
         raise
 
@@ -80,86 +109,114 @@ def save_jobs(jobs: List[Dict], jobs_dir: str) -> str:
         logger.error(f"Error saving jobs: {str(e)}")
         raise
 
-def main():
-    """Main function."""
+def print_menu():
+    """Print the main menu."""
+    print("\nAutoApply.AI - Automatização de Candidaturas")
+    print("=" * 40)
+    print("1. Buscar Vagas")
+    print("2. Combinar Vagas com Perfil")
+    print("3. Candidatar-se às Vagas")
+    print("4. Visualizar Análise de Vagas")
+    print("5. Executar Fluxo Completo")
+    print("6. Sair")
+    print("=" * 40)
+
+async def run_complete_flow(config: Dict) -> bool:
+    """Run the complete application flow."""
+    try:
+        logger.info("Executando fluxo completo")
+        
+        # 1. Search for jobs
+        logger.info("\n1. Buscando vagas...")
+        if not await run_script("search_jobs"):
+            logger.error("Falha na busca de vagas")
+            return False
+        logger.info("✅ Busca de vagas concluída")
+            
+        # 2. Match jobs with profile
+        logger.info("\n2. Combinando vagas com perfil...")
+        if not await run_script("match_jobs"):
+            logger.error("Falha na combinação de vagas")
+            return False
+        logger.info("✅ Combinação de vagas concluída")
+            
+        # 3. Apply to matched jobs
+        logger.info("\n3. Candidatando-se às vagas...")
+        if not await run_script("apply_jobs"):
+            logger.error("Falha nas candidaturas")
+            return False
+        logger.info("✅ Candidaturas concluídas")
+            
+        # 4. Analyze results
+        logger.info("\n4. Analisando resultados...")
+        if not await run_script("analyze_jobs"):
+            logger.error("Falha na análise")
+            return False
+        logger.info("✅ Análise concluída")
+            
+        logger.info("\n🎉 Fluxo completo executado com sucesso!")
+        return True
+        
+    except Exception as e:
+        logger.error(f"Erro no fluxo completo: {str(e)}")
+        return False
+
+async def main():
+    """Main application function."""
     try:
         # Load configuration
-        config = load_config('config/config.yaml')
+        config = load_config()
         
-        # Set up logging
-        os.makedirs('logs', exist_ok=True)
-        logger.add(
-            'logs/autoapply.log',
-            rotation='1 day',
-            retention='1 week',
-            level=config['logging']['level']
-        )
-        
-        # Print menu
         while True:
-            print("\nAutoApply.AI - Automatização de Candidaturas")
-            print("=" * 40)
-            print("1. Buscar Vagas")
-            print("2. Combinar Vagas com Perfil")
-            print("3. Candidatar-se às Vagas")
-            print("4. Visualizar Análise de Vagas")
-            print("5. Executar Fluxo Completo")
-            print("6. Sair")
-            print("=" * 40)
+            print_menu()
+            choice = input("Digite sua escolha (1-6): ")
             
-            choice = input("\nDigite sua escolha (1-6): ")
-            
-            if choice == '1':
-                run_script('search_jobs')
-                
-            elif choice == '2':
-                run_script('match_jobs')
-                
-            elif choice == '3':
-                run_script('apply_jobs', 
-                    '--config', 'config/config.yaml',
-                    '--resume', config['resume']['path'],
-                    '--matches-dir', 'data/matches'
-                )
-                
-            elif choice == '4':
-                run_script('analyze_jobs')
-                
-            elif choice == '5':
-                logger.info("Executando fluxo completo")
-                try:
-                    # Run search_jobs
-                    run_script('search_jobs')
+            try:
+                if choice == "1":
+                    await run_script("search_jobs")
+                    logger.info("Busca de vagas concluída")
                     
-                    # Run match_jobs
-                    run_script('match_jobs')
+                elif choice == "2":
+                    await run_script("match_jobs")
+                    logger.info("Combinação de vagas concluída")
                     
-                    # Run apply_jobs
-                    run_script('apply_jobs',
-                        '--config', 'config/config.yaml',
-                        '--resume', config['resume']['path'],
-                        '--matches-dir', 'data/matches'
-                    )
+                elif choice == "3":
+                    await run_script("apply_jobs")
+                    logger.info("Candidaturas concluídas")
                     
-                    # Run analyze_jobs
-                    run_script('analyze_jobs')
+                elif choice == "4":
+                    await run_script("analyze_jobs")
+                    logger.info("Análise concluída")
                     
-                except Exception as e:
-                    logger.error("Falha nas candidaturas")
-                    raise
+                elif choice == "5":
+                    logger.info("Executando fluxo completo")
+                    if await run_complete_flow(config):
+                        logger.info("Fluxo completo concluído com sucesso")
+                    else:
+                        logger.error("Falha no fluxo completo")
                     
-            elif choice == '6':
-                print("Saindo...")
-                break
+                elif choice == "6":
+                    logger.info("Encerrando aplicação")
+                    break
+                    
+                else:
+                    print("Opção inválida. Por favor, escolha entre 1-6.")
+                    
+            except Exception as e:
+                logger.error(f"Erro: {str(e)}")
+                print("\nOcorreu um erro. Deseja:")
+                print("1. Tentar novamente")
+                print("2. Voltar ao menu principal")
+                retry = input("Escolha (1-2): ")
                 
-            else:
-                print("Opção inválida!")
-                
+                if retry != "1":
+                    continue
+                    
     except KeyboardInterrupt:
-        logger.info("Aplicação interrompida pelo usuário")
+        logger.info("\nAplicação encerrada pelo usuário")
     except Exception as e:
         logger.error(f"Erro: {str(e)}")
         raise
 
 if __name__ == "__main__":
-    main() 
+    asyncio.run(main()) 
