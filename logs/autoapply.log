@@ -1,0 +1,52 @@
+2025-06-12 20:12:20 | INFO | Starting AutoApply.AI
+2025-06-12 20:12:20 | INFO | Directory structure verified
+2025-06-12 20:12:20 | ERROR | Resume file not found. Please add your resume to data/resumes/resume.pdf
+2025-06-12 20:13:35 | INFO | Starting AutoApply.AI
+2025-06-12 20:13:35 | INFO | Directory structure verified
+2025-06-12 20:13:35 | ERROR | Resume file not found. Please add your resume to data/resumes/resume.pdf
+2025-06-12 20:14:31 | INFO | Starting AutoApply.AI
+2025-06-12 20:14:31 | INFO | Directory structure verified
+2025-06-12 20:14:31 | INFO | Configuration verified
+2025-06-12 20:14:31 | INFO | Configuration loaded successfully
+2025-06-12 20:14:31 | INFO | Database initialized successfully
+2025-06-12 20:14:31 | ERROR | Error initializing components: Can't instantiate abstract class BaseApplicator without an implementation for abstract methods 'apply', 'is_applicable', 'login_if_needed'
+2025-06-12 20:14:31 | ERROR | Application error: Can't instantiate abstract class BaseApplicator without an implementation for abstract methods 'apply', 'is_applicable', 'login_if_needed'
+2025-06-12 23:27:58.493 | INFO     | __main__:main:125 - Executando fluxo completo
+2025-06-12 23:27:58.496 | INFO     | __main__:run_script:45 - Running search_jobs
+2025-06-12 23:28:10.650 | INFO     | __main__:run_script:45 - Running match_jobs
+2025-06-12 23:28:10.908 | INFO     | __main__:run_script:45 - Running apply_jobs
+2025-06-12 23:28:13.210 | ERROR    | __main__:run_script:48 - Error running apply_jobs: Command '['python', 'scripts/apply_jobs.py', '--config', 'config/config.yaml', '--resume', 'data/resumes/resume.pdf']' returned non-zero exit status 1.
+2025-06-12 23:28:13.210 | ERROR    | __main__:main:140 - Falha nas candidaturas
+2025-06-12 23:28:13.210 | ERROR    | __main__:main:153 - Erro: Command '['python', 'scripts/apply_jobs.py', '--config', 'config/config.yaml', '--resume', 'data/resumes/resume.pdf']' returned non-zero exit status 1.
+2025-06-12 23:30:18.233 | INFO     | __main__:main:129 - Executando fluxo completo
+2025-06-12 23:30:18.238 | INFO     | __main__:run_script:45 - Running search_jobs
+2025-06-12 23:30:27.814 | INFO     | __main__:run_script:45 - Running match_jobs
+2025-06-12 23:30:28.153 | INFO     | __main__:run_script:45 - Running apply_jobs
+2025-06-12 23:30:30.750 | ERROR    | __main__:run_script:48 - Error running apply_jobs: Command '['python', 'scripts/apply_jobs.py', '--config', 'config/config.yaml', '--resume', 'data/resumes/resume.pdf', '--matches-dir', 'data/matches']' returned non-zero exit status 1.
+2025-06-12 23:30:30.751 | ERROR    | __main__:main:148 - Falha nas candidaturas
+2025-06-12 23:30:30.751 | ERROR    | __main__:main:161 - Erro: Command '['python', 'scripts/apply_jobs.py', '--config', 'config/config.yaml', '--resume', 'data/resumes/resume.pdf', '--matches-dir', 'data/matches']' returned non-zero exit status 1.
+2025-06-12 23:31:31.699 | INFO     | __main__:main:129 - Executando fluxo completo
+2025-06-12 23:31:31.700 | INFO     | __main__:run_script:45 - Running search_jobs
+2025-06-12 23:31:40.714 | INFO     | __main__:run_script:45 - Running match_jobs
+2025-06-12 23:31:41.064 | INFO     | __main__:run_script:45 - Running apply_jobs
+2025-06-12 23:31:43.392 | ERROR    | __main__:run_script:48 - Error running apply_jobs: Command '['python', 'scripts/apply_jobs.py', '--config', 'config/config.yaml', '--resume', 'data/resumes/resume.pdf', '--matches-dir', 'data/matches']' returned non-zero exit status 1.
+2025-06-12 23:31:43.392 | ERROR    | __main__:main:148 - Falha nas candidaturas
+2025-06-12 23:31:43.393 | ERROR    | __main__:main:161 - Erro: Command '['python', 'scripts/apply_jobs.py', '--config', 'config/config.yaml', '--resume', 'data/resumes/resume.pdf', '--matches-dir', 'data/matches']' returned non-zero exit status 1.
+2025-06-12 23:32:21.879 | INFO     | __main__:main:129 - Executando fluxo completo
+2025-06-12 23:32:21.881 | INFO     | __main__:run_script:45 - Running search_jobs
+2025-06-12 23:32:34.248 | INFO     | __main__:run_script:45 - Running match_jobs
+2025-06-12 23:32:34.747 | INFO     | __main__:run_script:45 - Running apply_jobs
+2025-06-12 23:32:37.465 | INFO     | __main__:run_script:45 - Running analyze_jobs
+2025-06-12 23:32:38.730 | ERROR    | __main__:run_script:48 - Error running analyze_jobs: Command '['python', 'scripts/analyze_jobs.py']' returned non-zero exit status 1.
+2025-06-12 23:32:38.731 | ERROR    | __main__:main:148 - Falha nas candidaturas
+2025-06-12 23:32:38.731 | ERROR    | __main__:main:161 - Erro: Command '['python', 'scripts/analyze_jobs.py']' returned non-zero exit status 1.
+2025-06-12 23:34:26.856 | INFO     | __main__:main:129 - Executando fluxo completo
+2025-06-12 23:34:26.858 | INFO     | __main__:run_script:45 - Running search_jobs
+2025-06-12 23:34:36.425 | INFO     | __main__:run_script:45 - Running match_jobs
+2025-06-12 23:34:36.833 | INFO     | __main__:run_script:45 - Running apply_jobs
+2025-06-12 23:34:39.266 | INFO     | __main__:run_script:45 - Running analyze_jobs
+2025-06-12 23:54:54.950 | INFO     | __main__:main:129 - Executando fluxo completo
+2025-06-12 23:54:54.952 | INFO     | __main__:run_script:45 - Running search_jobs
+2025-06-12 23:55:05.973 | INFO     | __main__:run_script:45 - Running match_jobs
+2025-06-12 23:55:06.407 | INFO     | __main__:run_script:45 - Running apply_jobs
+2025-06-12 23:55:08.994 | INFO     | __main__:run_script:45 - Running analyze_jobs

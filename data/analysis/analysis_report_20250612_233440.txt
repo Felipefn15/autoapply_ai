@@ -1,0 +1,27 @@
+Job Search and Application Analysis Report
+========================================
+
+Job Statistics:
+Total Jobs Found: 297
+
+Jobs by Platform:
+- unknown: 297
+
+Top 10 Locations:
+- remote: 293
+- bangalore, india<p>* we are also accepting interns &amp; new graduates. feel free to send the email below. *<p>to apply:<p>send your resume to contact@zigment.ai with &quot;saw hn post&quot; in the subject line: 1
+- hybrid in boston or nyc (downtown) headcount: ~20<p>stack:react&#x2f;typescript frontend &#x2f; python backend &#x2f;&#x2f; gcp<p>open roles (all roles require a minimum of 6 years of work experience) * senior fullstack engineer (frontend-leaning) * staff+ data infra &#x2f; data platform engineer * staff+ ml infrastructure engineer * research scientist (phd&#x27;s) * head of product &#x2f; chief product officer * customer success manager * solutions engineer (healthcare&#x2f;emr implementations focused)<p>we offer:: 1
+- we&#x27;re based in san francisco, ca!<p>* in-person or open to relocation only: we&#x27;re a small team and we really do prefer all working together in person!<p>* compensation: sliding scale between 0.5%-2% equity and 150k - 200k base + medical&#x2f;dental&#x2f;vision benefits<p>our vision is to be the infrastructure for all apps of the future. if this jives with you we should really talk . send us an email: founders@instantdb.com with a bit about yourself, and a project you&#x27;ve worked on.: 1
+- paris, fr or europe (remote): 1
+
+Salary Statistics:
+Jobs with Salary Info: 1
+Minimum: $1,252,727.00
+Maximum: $1,252,727.00
+Average: $1,252,727.00
+
+Application Statistics:
+Total Applications: 2779
+Successful: 0
+Failed: 2779
+Success Rate: 0.00%

@@ -9,9 +9,24 @@ from datetime import datetime
 
 import fitz  # PyMuPDF
 import PyPDF2
-import spacy
+import nltk
+from nltk.tokenize import word_tokenize, sent_tokenize
+from nltk.tag import pos_tag
+from nltk.chunk import ne_chunk
 from pydantic import BaseModel
 from loguru import logger
+
+# Download required NLTK data
+try:
+    nltk.data.find('tokenizers/punkt')
+    nltk.data.find('taggers/averaged_perceptron_tagger')
+    nltk.data.find('chunkers/maxent_ne_chunker')
+    nltk.data.find('corpora/words')
+except LookupError:
+    nltk.download('punkt')
+    nltk.download('averaged_perceptron_tagger')
+    nltk.download('maxent_ne_chunker')
+    nltk.download('words')
 
 class ExperienceEntry(BaseModel):
     """Model for work experience entries."""
@@ -53,13 +68,12 @@ class ResumeParser:
     
     def __init__(self):
         """Initialize the resume parser."""
-        # Load spaCy model for NER
-        self.nlp = spacy.load("en_core_web_sm")
-        
         # Regex patterns
         self.email_pattern = r'[\w\.-]+@[\w\.-]+\.\w+'
         self.phone_pattern = r'\+?[\d\s-]{10,}'
         self.url_pattern = r'https?://(?:www\.)?[\w\.-]+\.\w+(?:/[\w\.-]*)*'
+        self.name_pattern = r'([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)'
+        self.location_pattern = r'([A-Z][a-z]+(?:[\s,]+[A-Z][a-z]+)*),?\s+([A-Z]{2})'
         
         # Skills keywords
         self.tech_skills = {
@@ -145,13 +159,24 @@ class ResumeParser:
             elif not any(domain in url for domain in ['linkedin.com', 'github.com']):
                 info['portfolio_url'] = url
         
-        # Extract name and location using spaCy NER
-        doc = self.nlp(text[:1000])  # Process first 1000 chars for efficiency
-        for ent in doc.ents:
-            if ent.label_ == 'PERSON' and 'name' not in info:
-                info['name'] = ent.text
-            elif ent.label_ == 'GPE' and 'location' not in info:
-                info['location'] = ent.text
+        # Extract name using regex and NLTK
+        name_match = re.search(self.name_pattern, text[:1000])
+        if name_match:
+            info['name'] = name_match.group(0)
+        else:
+            # Try NLTK NER as fallback
+            tokens = nltk.word_tokenize(text[:1000])
+            tagged = nltk.pos_tag(tokens)
+            entities = nltk.chunk.ne_chunk(tagged)
+            for entity in entities:
+                if isinstance(entity, nltk.Tree) and entity.label() == 'PERSON':
+                    info['name'] = ' '.join([leaf[0] for leaf in entity.leaves()])
+                    break
+            
+        # Extract location using regex
+        location_match = re.search(self.location_pattern, text)
+        if location_match:
+            info['location'] = location_match.group(0)
         
         return info
     

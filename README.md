@@ -1,41 +1,14 @@
 # AutoApply.AI
 
-An automated job application system that helps you find and apply to relevant jobs across multiple platforms.
+AutoApply.AI is an automated job search and application system that helps you find and apply to relevant job opportunities across multiple platforms.
 
 ## Features
 
-- **Multi-Platform Job Search**
-  - LinkedIn
-  - Indeed
-  - Remotive
-  - WeWorkRemotely
-  - Greenhouse
-
-- **Smart Job Matching**
-  - Resume parsing and analysis
-  - Skill matching
-  - Experience level matching
-  - Semantic similarity scoring
-  - Customizable matching thresholds
-  - Compatibility score calculation
-  - Intelligent filtering based on requirements
-
-- **Automated Applications**
-  - Platform-specific application automation
-  - Email application fallback
-  - Resume attachment
-  - Dynamic cover letter generation
-  - Application history tracking
-  - SQLite database for job and application storage
-  - Comprehensive logging system
-
-- **AI-Powered Cover Letters**
-  - Personalized for each job using Groq API
-  - Highlights relevant experience
-  - Matches job requirements
-  - Professional formatting
-  - Company-specific customization
-  - Customizable templates
+- **Multi-platform Job Search**: Search for jobs across LinkedIn, Indeed, Remotive, WeWorkRemotely, Stack Overflow, GitHub Jobs, AngelList, and Hacker News
+- **Smart Job Matching**: Match jobs with your profile based on skills, experience, and preferences
+- **Automated Applications**: Apply to jobs automatically or send customized emails
+- **Detailed Analytics**: Analyze job market trends, salary ranges, and application success rates
+- **Configurable**: Customize search criteria, application preferences, and automation settings
 
 ## Installation
 
@@ -45,7 +18,7 @@ git clone https://github.com/yourusername/autoapply_ai.git
 cd autoapply_ai
 ```
 
-2. Create a virtual environment:
+2. Create and activate a virtual environment:
 ```bash
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
@@ -56,76 +29,79 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-4. Install spaCy language model:
-```bash
-python -m spacy download en_core_web_sm
-```
-
-5. Configure the application:
-   - Copy `config/config.yaml.example` to `config/config.yaml`
-   - Update the configuration with your settings:
-     - Resume path
-     - Email credentials
-     - API keys
-     - Job search preferences
-
-## Configuration
-
-The system is configured through `config/config.yaml`. Key settings include:
-
-- **Resume Configuration**
-  - Path to your resume PDF
-  - Update interval
-  - Cache settings
-  - Parser configurations
-
-- **Job Search Settings**
-  - Enabled platforms
-  - Search intervals
-  - Keywords and locations
-  - Remote work preferences
-  - Platform-specific search criteria
-
-- **Application Settings**
-  - Cover letter customization
-  - Email configuration
-  - SMTP settings
-  - Application limits
-  - Template configurations
-    - Cover letter template (templates/cover_letter.txt)
-    - Email signature template (templates/email_signature.txt)
-
-- **API Configuration**
-  - Groq API key for cover letter generation
-  - OAuth credentials for job platforms
-  - Platform-specific API settings
-
-- **System Components**
-  - Resume parser settings
-  - Job matcher thresholds
-  - Cover letter generator preferences
-  - Email sender configurations
-  - Application manager settings
-  - Database configurations
+4. Set up your configuration:
+- Copy `config/profile.yaml.example` to `config/profile.yaml` and update with your information
+- Copy `config/config.yaml.example` to `config/config.yaml` and update settings
+- Copy `config/job_search.yaml.example` to `config/job_search.yaml` and customize search parameters
 
 ## Usage
 
-1. Start the application:
+The system can be used in two ways:
+
+### 1. Interactive Menu
+
+Run the main application with:
 ```bash
-python -m app.main
+python app/main.py
 ```
 
-2. The system will:
-   - Parse your resume
-   - Search for jobs across platforms
-   - Match jobs against your profile
-   - Apply automatically when matches are found
-   - Track all applications
+This will show a menu with options to:
+1. Search for Jobs
+2. Match Jobs with Profile
+3. Apply to Matched Jobs
+4. View Job Analysis
+5. Run Complete Workflow
 
-3. Monitor the application:
-   - Check logs in `logs/autoapply.log`
-   - Review applications in `data/applications.db`
-   - View generated cover letters in `data/cover_letters/`
+### 2. Individual Scripts
+
+You can also run each component separately:
+
+1. Search for jobs:
+```bash
+python scripts/search_jobs.py --config-dir config
+```
+
+2. Match jobs with your profile:
+```bash
+python scripts/match_jobs.py --profile config/profile.yaml
+```
+
+3. Apply to matched jobs:
+```bash
+python scripts/apply_jobs.py --config config/config.yaml --resume data/resume/resume.pdf
+```
+
+4. Analyze results:
+```bash
+python scripts/analyze_jobs.py --data-dir data
+```
+
+## Configuration
+
+### Profile Configuration (profile.yaml)
+
+Contains your personal information, experience, skills, and preferences:
+- Personal details and contact information
+- Work experience and education
+- Required and preferred skills
+- Job preferences (location, salary, industry, etc.)
+- Application preferences
+
+### Job Search Configuration (job_search.yaml)
+
+Customize job search parameters:
+- Keywords and locations
+- Platform-specific settings
+- Search intervals
+- Filters and requirements
+
+### Main Configuration (config.yaml)
+
+System-wide settings:
+- Application automation settings
+- Email configuration
+- Rate limiting and delays
+- Output directories
 
 ## Directory Structure
 
@@ -133,51 +109,39 @@ python -m app.main
 autoapply_ai/
 ├── app/
 │   ├── automation/
-│   │   ├── applicator_manager.py
-│   │   ├── cover_letter_generator.py
-│   │   ├── email_sender.py
-│   │   ├── job_matcher.py
-│   │   └── job_searcher.py
-│   ├── db/
-│   │   └── models.py
-│   └── resume/
-│       └── parser.py
+│   ├── email/
+│   ├── job_search/
+│   └── main.py
 ├── config/
-│   └── config.yaml
+│   ├── config.yaml
+│   ├── job_search.yaml
+│   └── profile.yaml
 ├── data/
-│   ├── applications.db
-│   ├── cache/           # Cache for parsed resumes and job searches
-│   ├── resumes/         # Store user resumes
-│   │   └── examples/    # Example resume templates
-│   ├── cover_letters/   # Generated cover letters
-│   ├── attachments/     # Resume attachments and other files
-│   └── jobs/           # Job search results and matches
-│       ├── raw/        # Raw job listings from platforms
-│       └── processed/  # Processed and matched job listings
-├── logs/
-│   └── autoapply.log
-├── templates/
-│   ├── cover_letter.txt
-│   └── email_signature.txt
-├── tests/
-├── README.md
+│   ├── jobs/
+│   ├── matches/
+│   ├── applications/
+│   └── analysis/
+├── scripts/
+│   ├── search_jobs.py
+│   ├── match_jobs.py
+│   ├── apply_jobs.py
+│   └── analyze_jobs.py
 └── requirements.txt
 ```
 
+## Output
+
+The system generates various outputs in the `data` directory:
+
+- `data/jobs/`: Raw job postings and search results
+- `data/matches/`: Jobs matched with your profile
+- `data/applications/`: Application results and status
+- `data/analysis/`: Analytics reports and visualizations
+
 ## Contributing
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Run tests: `pytest`
-5. Submit a pull request
+Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Acknowledgments
-
-- [Groq](https://groq.com/) for their powerful language models
-- Job platform providers for their services
-- Open source community for various tools and libraries 
+This project is licensed under the MIT License - see the LICENSE file for details. 

@@ -19,21 +19,30 @@ from loguru import logger
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
+from app.automation.linkedin_applicator import LinkedInApplicator
+from app.automation.indeed_applicator import IndeedApplicator
+from app.automation.remotive_applicator import RemotiveApplicator
+from app.automation.weworkremotely_applicator import WeWorkRemotelyApplicator
+from app.automation.greenhouse_applicator import GreenhouseApplicator
 from app.automation.cover_letter_generator import CoverLetterGenerator
+from app.automation.email_generator import EmailGenerator
 from app.automation.email_sender import EmailSender
 from app.automation.job_matcher import JobMatcher
 from app.automation.job_searcher import JobSearcher
-from app.automation.platform_applicator import PlatformApplicator
 from app.db.models import Application, Base, Job
 from app.resume.parser import ResumeParser
 
 class ApplicatorManager:
     """Manages the entire job application process."""
     
-    def __init__(self, config_path: str = "config/config.yaml"):
-        """Initialize the application manager."""
-        # Load configuration
-        self.config = self._load_config(config_path)
+    def __init__(self, config: Dict):
+        """
+        Initialize the applicator manager.
+        
+        Args:
+            config: Configuration dictionary or path to config file
+        """
+        self.config = self._load_config(config)
         
         # Initialize components
         self._init_database()
@@ -43,13 +52,29 @@ class ApplicatorManager:
         self.applications_today = 0
         self.last_resume_update = 0
         
-    def _load_config(self, config_path: str) -> Dict:
-        """Load configuration from YAML file."""
+    def _load_config(self, config: Dict) -> Dict:
+        """
+        Load configuration.
+        
+        Args:
+            config: Configuration dictionary or path to config file
+            
+        Returns:
+            Configuration dictionary
+        """
         try:
+            # If config is already a dict, use it directly
+            if isinstance(config, dict):
+                return config
+                
+            # Otherwise treat it as a path
+            config_path = Path(config)
+            if not config_path.exists():
+                raise FileNotFoundError(f"Config file not found: {config_path}")
+                
             with open(config_path, 'r') as f:
-                config = yaml.safe_load(f)
-            logger.info("Configuration loaded successfully")
-            return config
+                return yaml.safe_load(f)
+                
         except Exception as e:
             logger.error(f"Error loading configuration: {str(e)}")
             raise
@@ -109,10 +134,13 @@ class ApplicatorManager:
             )
             
             # Initialize platform applicators
-            self.platform_applicator = PlatformApplicator(
-                linkedin_config=self.config['oauth']['linkedin'],
-                indeed_config=self.config['oauth']['indeed']
-            )
+            self.applicators = {
+                'linkedin': LinkedInApplicator(self.config['oauth']['linkedin']),
+                'indeed': IndeedApplicator(self.config['oauth']['indeed']),
+                'remotive': RemotiveApplicator(self.config['oauth']['remotive']),
+                'weworkremotely': WeWorkRemotelyApplicator(self.config['oauth']['weworkremotely']),
+                'greenhouse': GreenhouseApplicator(self.config['oauth']['greenhouse'])
+            }
             
             logger.info("All components initialized successfully")
         except Exception as e:
@@ -196,10 +224,10 @@ class ApplicatorManager:
                 
             # Try platform-specific application first
             application_successful = False
-            if job['platform'] in ['linkedin', 'indeed']:
+            if job['platform'] in self.applicators:
                 try:
-                    application_successful = self.platform_applicator.apply(
-                        platform=job['platform'],
+                    applicator = self.applicators[job['platform']]
+                    application_successful = applicator.apply(
                         job_id=job['id'],
                         cover_letter=cover_letter
                     )
@@ -278,3 +306,28 @@ class ApplicatorManager:
             self.db_session.rollback()
             logger.error(f"Error recording application: {str(e)}")
             raise 
+
+    async def apply_to_job(self, job: Dict) -> Dict:
+        """
+        Apply to a job.
+        
+        Args:
+            job: Job posting dictionary
+            
+        Returns:
+            Application result dictionary
+        """
+        try:
+            # TODO: Implement actual job application logic
+            # For now just return a mock result
+            return {
+                'status': 'skipped',
+                'error_message': 'Automatic application not yet implemented'
+            }
+            
+        except Exception as e:
+            logger.error(f"Error applying to job: {str(e)}")
+            return {
+                'status': 'failed',
+                'error_message': str(e)
+            } 

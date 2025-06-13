@@ -3,7 +3,7 @@
 
 # Resume Configuration
 resume:
-  path: "data/resume.pdf"  # Path to your resume PDF
+  path: "data/resumes/resume.pdf"  # Path to your resume PDF
   cache_dir: "data/cache"  # Directory to cache parsed resume data
   update_interval: 86400   # How often to re-parse resume (in seconds)
 

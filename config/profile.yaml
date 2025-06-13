@@ -1,0 +1,233 @@
+# User Profile Configuration
+
+# Personal Information
+personal:
+  name: "Felipe França Nogueira"
+  email: "felipefrancanogueira@gmail.com"
+  phone: "+5521969689811"
+  location: "Rio de Janeiro, Brasil"
+  linkedin: "https://linkedin.com/in/felipefrancanogueira"
+  github: "https://github.com/Felipefn15"
+  languages:
+    - "English (Full Professional)"
+    - "Portuguese (Native)"
+  portfolio: "https://your-portfolio.com"  # Your portfolio website (optional)
+
+# Experience
+experience:
+  years: 7
+  current_role: "Full-stack Developer"
+  current_company: "Originate"
+  previous_roles:
+    - title: "Full Stack Developer"
+      company: "Basis"
+      duration: "11 months"
+    - title: "Full-stack Developer"
+      company: "Sierra Studio"
+      duration: "8 months"
+    - title: "Full Stack Engineer"
+      company: "Robbyson"
+      duration: "3 months"
+    - title: "Full Stack Developer"
+      company: "Kanon Gaming Limited"
+      duration: "1 year 1 month"
+    - title: "Full Stack Software Engineer"
+      company: "Fetchly Labs"
+      duration: "1 year 6 months"
+
+# Core Technologies (at least one required)
+core_technologies:
+  - "JavaScript"
+  - "React"
+  - "React Native"
+  - "Next.js"
+  - "Node.js"
+
+# Skills
+skills:
+  - "React"
+  - "React Native"
+  - "Next.js"
+  - "TypeScript"
+  - "Node.js"
+  - "Python"
+  - "Django"
+  - "Flask"
+  - "Ruby on Rails"
+  - "GraphQL"
+  - "MongoDB"
+  - "PostgreSQL"
+  - "Redis"
+  - "LangChain"
+  - "OpenAI"
+  - "ChatGPT"
+  - "Gemi"
+  - "AI Agent Integration"
+  - "Docker"
+  - "AWS"
+  - "GCP"
+  - "CI/CD"
+  - "Git"
+  - "GitLab"
+  - "Microservices"
+  - "REST APIs"
+  - "Tailwind CSS"
+  - "Redux"
+  - "Apollo Client"
+  - "Storybook"
+  - "Microfrontends"
+  - "TDD"
+  - "Clean Code"
+  - "Team Leadership"
+  - "Code Review"
+  - "Pair Programming"
+  - "Cross-functional Collaboration"
+
+# Job Preferences
+preferences:
+  roles:
+    - "Full Stack Developer"
+    - "Senior Software Engineer"
+    - "Lead Developer"
+    - "Tech Lead"
+  remote: true
+  relocation: false
+  benefits_required:
+    - "Health Insurance"
+    - "Remote Work"
+    - "Stock Options"
+    - "Professional Development"
+  job_types:
+    - "Full-time"
+    - "Remote"
+  locations:
+    - "Remote"
+    - "Rio de Janeiro, Brasil"
+    - "United States"
+    - "Europe"
+  industries:
+    - "Technology"
+    - "Finance"
+    - "Gaming"
+    - "E-commerce"
+    - "AI/ML"
+  company_size:
+    - "Startup"
+    - "Mid-size"
+    - "Enterprise"
+  contract: false
+
+# Application Preferences
+application_preferences:
+  highlight_achievements:
+    - "Led development teams and mentored junior developers through pair programming and code reviews"
+    - "Integrated AI technologies including OpenAI ChatGPT, Gemi, and custom AI agents in multiple projects"
+    - "Developed scalable solutions using microservices architecture and modern tech stacks"
+    - "Improved system performance using Redis and optimized database queries"
+    - "Created responsive and performant applications using React/Next.js with TypeScript"
+  cover_letter_style: "professional"
+  custom_questions:
+    salary_expectation: "Based on my experience with full-stack development, AI integration, and team leadership, I'm seeking compensation in the range of $4,000 to $5,000 monthly, depending on the total package and location."
+    why_leave: "I'm interested in opportunities that allow me to further develop my expertise in AI integration and modern web technologies while working on impactful projects."
+    start_date: "I can start within 4 weeks of accepting an offer."
+
+# Salary Preferences
+salary:
+  min_monthly: 4000
+  max_monthly: 5000
+  currency: "USD"
+
+# Education
+education:
+  - degree: "Bachelor of Technology - BTech, Systems Development Analyst"
+    institution: "Universidade Veiga de Almeida"
+    year: 2023
+
+# Certifications
+certifications:
+  - "Introdução a python"
+  - "MYSQL I: INICIANDO SUAS CONSULTAS"
+  - "Cambridge English Preliminary Test (PET)"
+  - "Tailwind"
+  - "Open ai and Langchain"
+
+# Simplified skills list combining all relevant skills
+skills_list:
+  - "React"
+  - "React Native"
+  - "TypeScript"
+  - "Node.js"
+  - "Python"
+  - "Next.js"
+  - "Ruby on Rails"
+  - "GraphQL"
+  - "MongoDB"
+  - "PostgreSQL"
+  - "Redis"
+  - "Git"
+  - "Vue.js"
+  - "Angular"
+  - "Django"
+  - "Flask"
+  - "Tailwind CSS"
+  - "Docker"
+  - "AWS"
+  - "GCP"
+  - "Microservices"
+  - "CI/CD"
+  - "OpenAI ChatGPT"
+  - "LangChain"
+  - "Gemi"
+  - "AI Agent Integration"
+  - "Team Leadership"
+  - "Code Review"
+  - "Mentoring"
+  - "Problem Solving"
+  - "Technical Documentation"
+  - "Requirements Gathering"
+  - "Cross-functional Collaboration"
+
+# Benefits
+benefits_required:
+  - "Health Insurance"
+  - "Remote Work"
+  - "Stock Options"
+  - "Professional Development"
+
+# Job Types
+job_types:
+  - "Full-time"
+  - "Remote"
+
+# Locations
+locations:
+  - "Remote"
+  - "Rio de Janeiro, Brasil"
+  - "United States"
+  - "Europe"
+
+# Industries
+industries:
+  - "Technology"
+  - "Financial Technology"
+  - "Gaming"
+  - "E-commerce"
+  - "AI/ML"
+
+# Company Size
+company_size:
+  - "Startup"
+  - "Mid-size"
+  - "Enterprise"
+
+# Contract
+contract: false
+
+# Cover Letter Style
+cover_letter_style: "professional"
+
+# Custom Questions
+custom_questions:
+  salary_expectation: "Based on my experience with full-stack development, AI integration, and team leadership, I'm seeking compensation in the range of $4,000 to $5,000 monthly, depending on the total package and location."
+  why_leave: "I'm interested in opportunities that allow me to further develop my expertise in AI integration and modern web technologies while working on impactful projects."
+  start_date: "I can start within 4 weeks of accepting an offer." 

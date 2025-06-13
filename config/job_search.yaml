@@ -1,0 +1,114 @@
+# Job Search Configuration
+
+# Common settings for all platforms
+common:
+  search_interval: 3600  # How often to search each platform (in seconds)
+  max_jobs_per_search: 100  # Maximum number of jobs to return per search
+  keywords:
+    - "software engineer"
+    - "software developer"
+    - "full stack"
+    - "backend"
+    - "python"
+  location: "Remote"
+
+# Platform-specific settings
+linkedin:
+  enabled: true
+  search_interval: 3600
+  keywords:
+    - "software engineer"
+    - "software developer"
+    - "python developer"
+  locations:
+    - "Remote"
+    - "United States"
+  remote_only: true
+
+indeed:
+  enabled: true
+  search_interval: 3600
+  keywords:
+    - "software engineer"
+    - "software developer"
+    - "python developer"
+  locations:
+    - "Remote"
+    - "United States"
+  remote_only: true
+
+remotive:
+  enabled: true
+  search_interval: 7200  # 2 hours
+  keywords:
+    - "software engineer"
+    - "software developer"
+    - "python"
+  category: "software-dev"
+
+weworkremotely:
+  enabled: true
+  search_interval: 7200
+  categories:
+    - "remote-jobs-programming"
+    - "remote-jobs-devops-sysadmin"
+    - "remote-jobs-full-stack-programming"
+  keywords:
+    - "software"
+    - "python"
+    - "developer"
+
+stackoverflow:
+  enabled: true
+  search_interval: 7200
+  keywords:
+    - "software engineer"
+    - "software developer"
+    - "python"
+  remote_only: true
+
+github:
+  enabled: true
+  search_interval: 7200
+  keywords:
+    - "software engineer"
+    - "software developer"
+    - "python"
+  full_time: true
+  location: "Remote"
+
+angellist:
+  enabled: true
+  search_interval: 7200
+  keywords:
+    - "software engineer"
+    - "software developer"
+    - "python"
+  job_types:
+    - "full-time"
+    - "contract"
+  remote_only: true
+
+hackernews:
+  enabled: true
+  search_interval: 86400  # 24 hours - HN posts monthly
+  keywords:
+    - "software"
+    - "engineer"
+    - "developer"
+    - "python"
+    - "remote"
+
+# Job filtering settings
+filters:
+  min_salary: 80000  # Minimum annual salary in USD
+  max_salary: 200000  # Maximum annual salary in USD
+  remote_only: true  # Only show remote jobs
+  recent_only: true  # Only show jobs from last 24 hours
+  excluded_companies: []  # List of companies to exclude
+  required_keywords:  # All these keywords must be present
+    - "python"
+    - "software"
+  excluded_keywords:  # None of these keywords should be present
+    - "php"
+    - "wordpress" 

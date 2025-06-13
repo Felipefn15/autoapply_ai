@@ -1,12 +1,12 @@
 """
-Remotive Applicator Module
+Remotive Applicator Module - Handles job applications on Remotive
 """
 from typing import Dict, Optional
 import re
-from datetime import datetime
 import time
+from urllib.parse import urlparse
 
-from playwright.sync_api import Page
+from playwright.sync_api import Page, expect
 from loguru import logger
 
 from .base_applicator import BaseApplicator, ApplicationResult
@@ -14,14 +14,59 @@ from .base_applicator import BaseApplicator, ApplicationResult
 class RemotiveApplicator(BaseApplicator):
     """Handles job applications on Remotive."""
     
+    def __init__(self, config: Dict):
+        """Initialize the Remotive applicator."""
+        super().__init__(config)
+        self.page = None  # Will be set when needed
+        
     async def is_applicable(self, url: str) -> bool:
         """Check if this applicator can handle the given URL."""
         return 'remotive.com' in url.lower()
         
     async def login_if_needed(self) -> bool:
-        """No login needed for Remotive."""
-        return True
-        
+        """Perform Remotive login if required."""
+        try:
+            # Check if already logged in
+            profile_button = await self.page.query_selector("a[href*='/profile']")
+            if profile_button:
+                return True
+                
+            # Get credentials from config
+            email = self.config.get('remotive_email')
+            password = self.config.get('remotive_password')
+            
+            if not email or not password:
+                logger.error("Remotive credentials not found in config")
+                return False
+                
+            # Click sign in button
+            sign_in = await self.page.query_selector("a[href*='/login']")
+            if sign_in:
+                await sign_in.click()
+                await self.page.wait_for_timeout(self.automation_delay * 1000)
+                
+            # Find and fill login form
+            await self.safe_fill("input[type='email']", email)
+            await self.safe_fill("input[type='password']", password)
+            
+            # Click login button
+            if not await self.safe_click("button[type='submit']"):
+                logger.error("Could not find login button")
+                return False
+                
+            # Wait for navigation and check if login was successful
+            try:
+                await self.page.wait_for_selector("a[href*='/profile']", timeout=10000)
+                logger.info("Successfully logged in to Remotive")
+                return True
+            except:
+                logger.error("Login to Remotive failed")
+                return False
+                
+        except Exception as e:
+            logger.error(f"Error during Remotive login: {str(e)}")
+            return False
+            
     async def apply(self, job_data: Dict, resume_data: Dict) -> ApplicationResult:
         """Apply to a job on Remotive."""
         try:
@@ -29,119 +74,106 @@ class RemotiveApplicator(BaseApplicator):
             await self.page.goto(job_data['url'])
             await self.page.wait_for_load_state('networkidle')
             
-            # Check if there's an external application link
-            external_link = await self._get_external_link()
-            if external_link:
-                # Save the external link for manual application
-                return self.create_result(
-                    job_data,
-                    'external',
-                    f'External application required: {external_link}'
-                )
+            # Handle cookie popup if present
+            await self.handle_cookies_popup()
             
-            # Check for application form
-            apply_button = await self.page.query_selector('button:has-text("Apply for this position")')
+            # Check if we need to login
+            if not await self.login_if_needed():
+                return self.create_result(job_data, 'failed', 'Login required but failed')
+                
+            # Look for Apply button
+            apply_button = await self.page.query_selector("a[href*='apply']")
             if not apply_button:
-                # Try to find email in job description
-                email = await self._extract_email_from_description()
-                if email:
-                    return self.create_result(
-                        job_data,
-                        'email_required',
-                        f'Application via email: {email}'
-                    )
-                return self.create_result(
-                    job_data,
-                    'skipped',
-                    'No application method found'
-                )
-            
-            # Click apply button
+                return self.create_result(job_data, 'skipped', 'No Apply button found')
+                
+            # Start application process
             await apply_button.click()
             await self.page.wait_for_timeout(self.automation_delay * 1000)
             
-            # Fill out application form
-            success = await self._fill_application_form(resume_data)
-            if not success:
-                return self.create_result(
-                    job_data,
-                    'failed',
-                    'Failed to fill application form'
-                )
-            
-            # Submit application
-            submit_button = await self.page.query_selector('button[type="submit"]')
-            if submit_button:
-                await submit_button.click()
-                await self.page.wait_for_timeout(self.automation_delay * 1000)
+            # Process application steps
+            while True:
+                # Check for common form fields
+                await self._fill_common_fields(resume_data)
                 
-                return self.create_result(
-                    job_data,
-                    'success',
-                    None
-                )
+                # Look for next or submit button
+                next_button = await self.page.query_selector("button[type='submit']")
+                
+                if next_button:
+                    # Submit application
+                    await next_button.click()
+                    await self.page.wait_for_timeout(self.automation_delay * 1000)
+                    
+                    # Check for success confirmation
+                    success_element = await self.page.query_selector("div[class*='success']")
+                    if success_element:
+                        return self.create_result(job_data, 'success')
+                    else:
+                        return self.create_result(job_data, 'failed', 'Could not confirm submission')
+                else:
+                    # No more buttons found
+                    return self.create_result(job_data, 'failed', 'Could not complete application flow')
+                    
+        except Exception as e:
+            logger.error(f"Error applying to Remotive job: {str(e)}")
+            return self.create_result(job_data, 'failed', str(e))
             
-            return self.create_result(
-                job_data,
-                'failed',
-                'Could not find submit button'
-            )
+    async def _fill_common_fields(self, resume_data: Dict) -> None:
+        """Fill common form fields found in Remotive applications."""
+        try:
+            # Personal Information
+            await self.safe_fill("input[name*='name']", f"{resume_data.get('first_name', '')} {resume_data.get('last_name', '')}")
+            await self.safe_fill("input[name*='email']", resume_data.get('email', ''))
+            await self.safe_fill("input[name*='phone']", resume_data.get('phone', ''))
+            
+            # Resume Upload
+            resume_selector = "input[type='file'][accept*='pdf']"
+            if await self.page.query_selector(resume_selector):
+                await self.upload_resume(resume_selector, str(self.config['resume_path']))
+            
+            # Cover Letter or Additional Information
+            cover_letter = await self.page.query_selector("textarea[name*='cover_letter']")
+            if cover_letter:
+                await self.safe_fill("textarea[name*='cover_letter']", resume_data.get('cover_letter', ''))
+            
+            # Additional Questions
+            await self._handle_additional_questions(resume_data)
             
         except Exception as e:
-            logger.error(f"Error applying on Remotive: {str(e)}")
-            return self.create_result(
-                job_data,
-                'failed',
-                str(e)
-            )
-    
-    async def _get_external_link(self) -> Optional[str]:
-        """Get external application link if present."""
+            logger.warning(f"Error filling common fields: {str(e)}")
+            
+    async def _handle_additional_questions(self, resume_data: Dict) -> None:
+        """Handle additional application questions."""
         try:
-            link = await self.page.query_selector('a[href*="apply"]')
-            if link:
-                return await link.get_attribute('href')
-            return None
-        except:
-            return None
-    
-    async def _extract_email_from_description(self) -> Optional[str]:
-        """Extract email from job description."""
-        try:
-            description = await self.page.text_content('.job-description')
-            if description:
-                email_match = re.search(r'[\w\.-]+@[\w\.-]+\.\w+', description)
-                if email_match:
-                    return email_match.group(0)
-            return None
-        except:
-            return None
-    
-    async def _fill_application_form(self, resume_data: Dict) -> bool:
-        """Fill out the application form."""
-        try:
-            # Fill name
-            name_input = await self.page.query_selector('input[name="name"]')
-            if name_input:
-                await name_input.fill(resume_data.get('name', ''))
+            # Look for common question patterns
+            questions = await self.page.query_selector_all("div[class*='question']")
             
-            # Fill email
-            email_input = await self.page.query_selector('input[name="email"]')
-            if email_input:
-                await email_input.fill(resume_data.get('email', ''))
-            
-            # Upload resume
-            resume_input = await self.page.query_selector('input[type="file"]')
-            if resume_input:
-                await resume_input.set_input_files(resume_data.get('resume_path', ''))
-            
-            # Fill cover letter if required
-            cover_letter_input = await self.page.query_selector('textarea[name="cover_letter"]')
-            if cover_letter_input:
-                await cover_letter_input.fill(resume_data.get('cover_letter', ''))
-            
-            return True
-            
+            for question in questions:
+                # Get question text
+                question_text = await question.text_content()
+                if not question_text:
+                    continue
+                    
+                question_text = question_text.lower()
+                
+                # Experience questions
+                if any(word in question_text for word in ['years', 'experience']):
+                    experience = str(resume_data.get('experience_years', ''))
+                    await self.safe_fill("input[type='text']", experience, parent=question)
+                
+                # Salary expectations
+                elif any(word in question_text for word in ['salary', 'compensation']):
+                    salary = str(resume_data.get('salary_expectation', ''))
+                    await self.safe_fill("input[type='text']", salary, parent=question)
+                
+                # Yes/No questions
+                elif any(word in question_text for word in ['willing to', 'able to', 'can you']):
+                    # Default to Yes for most questions
+                    await self.safe_select("select", "Yes", parent=question)
+                
+                # Notice period
+                elif 'notice period' in question_text:
+                    notice = str(resume_data.get('notice_period', '2 weeks'))
+                    await self.safe_fill("input[type='text']", notice, parent=question)
+                
         except Exception as e:
-            logger.error(f"Error filling application form: {str(e)}")
-            return False 
+            logger.warning(f"Error handling additional questions: {str(e)}") 

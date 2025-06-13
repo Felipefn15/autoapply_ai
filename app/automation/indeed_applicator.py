@@ -14,6 +14,12 @@ from .base_applicator import BaseApplicator, ApplicationResult
 class IndeedApplicator(BaseApplicator):
     """Handles job applications on Indeed."""
     
+    def __init__(self, config: Dict):
+        """Initialize the Indeed applicator."""
+        super().__init__(config)
+        self.page = None  # Will be set when needed
+        self.session_valid_until = None
+        
     async def is_applicable(self, url: str) -> bool:
         """Check if this applicator can handle the given URL."""
         return 'indeed.com' in url.lower()
@@ -21,44 +27,46 @@ class IndeedApplicator(BaseApplicator):
     async def login_if_needed(self) -> bool:
         """Perform Indeed login if required."""
         try:
-            # Check if already logged in
-            profile_button = await self.page.query_selector("[data-gnav-element-name='ProfileMenu']")
-            if profile_button:
+            # Check if we're already logged in
+            if self.session_valid_until and time.time() < self.session_valid_until:
                 return True
                 
-            # Get credentials from config
-            email = self.config.get('indeed_email')
-            password = self.config.get('indeed_password')
-            
-            if not email or not password:
-                logger.error("Indeed credentials not found in config")
-                return False
+            # Check if login is needed by looking for sign-in button
+            sign_in_button = await self.page.query_selector("a[href*='login']")
+            if not sign_in_button:
+                # No sign-in button found, we might be logged in
+                profile_button = await self.page.query_selector("button[aria-label*='profile']")
+                if profile_button:
+                    # Update session validity (24 hours from now)
+                    self.session_valid_until = time.time() + 24 * 60 * 60
+                    return True
+                    
+            # Navigate to login page if not already there
+            if not await self.page.query_selector("input[id='ifl-InputFormField-3']"):
+                await sign_in_button.click()
+                await self.page.wait_for_load_state('networkidle')
                 
-            # Click sign in button
-            sign_in = await self.page.query_selector("a[href*='login']")
-            if sign_in:
-                await sign_in.click()
-                await self.page.wait_for_timeout(self.automation_delay * 1000)
+            # Fill login form
+            await self.safe_fill("input[id='ifl-InputFormField-3']", self.config['username'])
+            await self.safe_fill("input[id='ifl-InputFormField-7']", self.config['password'])
             
-            # Find and fill login form
-            await self.safe_fill("#ifl-InputFormField-3", email)
-            await self.safe_click("button[type='submit']")
-            await self.page.wait_for_timeout(self.automation_delay * 1000)
+            # Submit login form
+            submit_button = await self.page.query_selector("button[type='submit']")
+            if submit_button:
+                await submit_button.click()
+                await self.page.wait_for_load_state('networkidle')
+                
+                # Verify login success
+                profile_button = await self.page.query_selector("button[aria-label*='profile']")
+                if profile_button:
+                    # Update session validity (24 hours from now)
+                    self.session_valid_until = time.time() + 24 * 60 * 60
+                    logger.info("Successfully logged in to Indeed")
+                    return True
+                    
+            logger.error("Failed to login to Indeed")
+            return False
             
-            await self.safe_fill("#ifl-InputFormField-7", password)
-            if not await self.safe_click("button[type='submit']"):
-                logger.error("Could not find password submit button")
-                return False
-                
-            # Wait for navigation and check if login was successful
-            try:
-                await self.page.wait_for_selector("[data-gnav-element-name='ProfileMenu']", timeout=10000)
-                logger.info("Successfully logged in to Indeed")
-                return True
-            except:
-                logger.error("Login to Indeed failed")
-                return False
-                
         except Exception as e:
             logger.error(f"Error during Indeed login: {str(e)}")
             return False
@@ -78,7 +86,7 @@ class IndeedApplicator(BaseApplicator):
                 return self.create_result(job_data, 'failed', 'Login required but failed')
                 
             # Look for Apply button
-            apply_button = await self.page.query_selector("button[id*='indeed-apply-button']")
+            apply_button = await self.page.query_selector("button[id='indeedApplyButton']")
             if not apply_button:
                 return self.create_result(job_data, 'skipped', 'No Apply button found')
                 
@@ -86,18 +94,13 @@ class IndeedApplicator(BaseApplicator):
             await apply_button.click()
             await self.page.wait_for_timeout(self.automation_delay * 1000)
             
-            # Switch to application modal if needed
-            modal = await self.page.query_selector("iframe[id*='modal-iframe']")
-            if modal:
-                await self.page.frame_locator("iframe[id*='modal-iframe']").first.wait_for_load_state()
-            
             # Process application steps
             while True:
                 # Check for common form fields
                 await self._fill_common_fields(resume_data)
                 
-                # Look for continue or submit button
-                continue_button = await self.page.query_selector("button[id*='form-action-continue']")
+                # Look for next or submit button
+                next_button = await self.page.query_selector("button[id*='form-action-continue']")
                 submit_button = await self.page.query_selector("button[id*='form-action-submit']")
                 
                 if submit_button:
@@ -106,15 +109,14 @@ class IndeedApplicator(BaseApplicator):
                     await self.page.wait_for_timeout(self.automation_delay * 1000)
                     
                     # Check for success confirmation
-                    success_element = await self.page.query_selector("[data-testid='applied-success']")
+                    success_element = await self.page.query_selector("div[class*='ia-success-message']")
                     if success_element:
                         return self.create_result(job_data, 'success')
                     else:
                         return self.create_result(job_data, 'failed', 'Could not confirm submission')
-                        
-                elif continue_button:
+                elif next_button:
                     # Move to next step
-                    await continue_button.click()
+                    await next_button.click()
                     await self.page.wait_for_timeout(self.automation_delay * 1000)
                 else:
                     # No more buttons found
@@ -128,18 +130,20 @@ class IndeedApplicator(BaseApplicator):
         """Fill common form fields found in Indeed applications."""
         try:
             # Personal Information
-            await self.safe_fill("[id*='input-firstName']", resume_data.get('first_name', ''))
-            await self.safe_fill("[id*='input-lastName']", resume_data.get('last_name', ''))
-            await self.safe_fill("[id*='input-email']", resume_data.get('email', ''))
-            await self.safe_fill("[id*='input-phoneNumber']", resume_data.get('phone', ''))
-            
-            # Location
-            await self.safe_fill("[id*='input-location']", f"{resume_data.get('city', '')}, {resume_data.get('state', '')}")
+            await self.safe_fill("input[id*='input-firstName']", resume_data.get('first_name', ''))
+            await self.safe_fill("input[id*='input-lastName']", resume_data.get('last_name', ''))
+            await self.safe_fill("input[id*='input-email']", resume_data.get('email', ''))
+            await self.safe_fill("input[id*='input-phoneNumber']", resume_data.get('phone', ''))
             
             # Resume Upload
             resume_selector = "input[type='file'][accept*='pdf']"
             if await self.page.query_selector(resume_selector):
                 await self.upload_resume(resume_selector, str(self.config['resume_path']))
+            
+            # Cover Letter
+            cover_letter = await self.page.query_selector("textarea[id*='input-coverLetter']")
+            if cover_letter:
+                await self.safe_fill("textarea[id*='input-coverLetter']", resume_data.get('cover_letter', ''))
             
             # Additional Questions
             await self._handle_additional_questions(resume_data)
@@ -148,48 +152,76 @@ class IndeedApplicator(BaseApplicator):
             logger.warning(f"Error filling common fields: {str(e)}")
             
     async def _handle_additional_questions(self, resume_data: Dict) -> None:
-        """Handle additional application questions."""
+        """Handle Indeed-specific additional questions."""
         try:
-            # Look for common question patterns
-            questions = await self.page.query_selector_all("[class*='question-container']")
+            # Common Indeed questions
+            questions = {
+                "authorized": "Are you legally authorized to work in",
+                "sponsorship": "Will you now or in the future require sponsorship",
+                "start_date": "When can you start",
+                "remote": "Are you comfortable working remotely",
+                "onsite": "Are you willing to work onsite",
+                "travel": "Are you willing to travel",
+                "relocation": "Are you willing to relocate",
+                "education": "What is your highest level of education",
+                "experience": "How many years of relevant experience do you have",
+                "certifications": "Do you have any relevant certifications",
+                "languages": "What languages do you speak",
+                "salary": "What is your desired salary"
+            }
             
-            for question in questions:
-                # Get question text
+            for key, text in questions.items():
+                # Look for questions by text content
+                question = await self.page.query_selector(f"label:has-text('{text}')")
+                if question:
+                    # Get associated input field
+                    input_id = await question.get_attribute('for')
+                    if input_id:
+                        # Handle different question types
+                        if key in ['authorized', 'remote', 'onsite']:
+                            await self.safe_select(f"select#{input_id}", 'Yes')
+                        elif key == 'sponsorship':
+                            await self.safe_select(f"select#{input_id}", 'No')
+                        elif key == 'start_date':
+                            await self.safe_fill(f"input#{input_id}", resume_data.get('start_date', 'Immediately'))
+                        elif key in ['travel', 'relocation']:
+                            await self.safe_select(f"select#{input_id}", resume_data.get(key, 'Yes'))
+                        elif key == 'education':
+                            await self.safe_select(f"select#{input_id}", resume_data.get('highest_education', "Bachelor's Degree"))
+                        elif key == 'experience':
+                            await self.safe_select(f"select#{input_id}", str(len(resume_data.get('work_experience', []))))
+                        elif key == 'certifications':
+                            certs = ', '.join(resume_data.get('certifications', []))
+                            await self.safe_fill(f"input#{input_id}", certs)
+                        elif key == 'languages':
+                            langs = ', '.join(resume_data.get('languages', ['English']))
+                            await self.safe_fill(f"input#{input_id}", langs)
+                        elif key == 'salary':
+                            await self.safe_fill(f"input#{input_id}", resume_data.get('desired_salary', ''))
+                            
+            # Handle custom questions
+            custom_questions = await self.page.query_selector_all("div[class*='ia-Questions-item']")
+            for question in custom_questions:
                 question_text = await question.text_content()
                 if not question_text:
                     continue
                     
+                # Try to intelligently answer based on question content
                 question_text = question_text.lower()
                 
-                # Experience questions
-                if any(word in question_text for word in ['years', 'experience']):
-                    experience = str(resume_data.get('experience_years', ''))
-                    await self.safe_fill("input[type='text']", experience, parent=question)
-                
-                # Education questions
-                elif any(word in question_text for word in ['degree', 'education']):
-                    education = resume_data.get('education', '')
-                    await self.safe_fill("input[type='text']", education, parent=question)
-                
-                # Salary expectations
-                elif any(word in question_text for word in ['salary', 'compensation']):
-                    salary = str(resume_data.get('salary_expectation', ''))
-                    await self.safe_fill("input[type='text']", salary, parent=question)
-                
-                # Yes/No questions
-                elif any(word in question_text for word in ['willing to', 'able to', 'can you']):
-                    # Default to Yes for most questions
-                    await self.safe_select("select", "Yes", parent=question)
-                
-                # Start date
-                elif 'start date' in question_text:
-                    start_date = resume_data.get('available_start_date', 'Immediately')
-                    await self.safe_fill("input[type='text']", start_date, parent=question)
-                
-                # Work authorization
-                elif 'authorized' in question_text:
-                    auth_status = 'Yes' if resume_data.get('work_authorization') else 'No'
-                    await self.safe_select("select", auth_status, parent=question)
-                
+                if any(word in question_text for word in ['why', 'interest', 'motivation']):
+                    # Questions about motivation/interest
+                    await self.safe_fill("textarea", resume_data.get('job_interest', ''), parent=question)
+                elif any(word in question_text for word in ['project', 'achievement']):
+                    # Questions about projects/achievements
+                    await self.safe_fill("textarea", resume_data.get('key_achievements', ''), parent=question)
+                elif any(word in question_text for word in ['challenge', 'difficult']):
+                    # Questions about challenges
+                    await self.safe_fill("textarea", resume_data.get('challenges_overcome', ''), parent=question)
+                elif any(word in question_text for word in ['strength', 'skill']):
+                    # Questions about strengths/skills
+                    skills = ', '.join(resume_data.get('key_skills', []))
+                    await self.safe_fill("textarea", skills, parent=question)
+                    
         except Exception as e:
             logger.warning(f"Error handling additional questions: {str(e)}") 

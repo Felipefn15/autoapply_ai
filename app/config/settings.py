@@ -83,7 +83,7 @@ class AutomationConfig(BaseModel):
     debug_mode: bool = False
     automation_delay: float = 2.0
     application_delay: float = 5.0
-    resume_path: str = "data/resume.pdf"
+    resume_path: str = "data/resumes/resume.pdf"
     linkedin_email: Optional[str] = None
     linkedin_password: Optional[str] = None
     indeed_email: Optional[str] = None

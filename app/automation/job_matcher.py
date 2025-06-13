@@ -9,7 +9,6 @@ Matches job postings against resume data using:
 """
 from typing import Dict, List, Set
 import re
-import spacy
 from loguru import logger
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
@@ -25,8 +24,7 @@ class JobMatcher:
         self.preferred_skills = set(s.lower() for s in (preferred_skills or []))
         self.excluded_keywords = set(k.lower() for k in (excluded_keywords or []))
         
-        # Initialize NLP components
-        self.nlp = spacy.load('en_core_web_sm')
+        # Initialize text processing components
         self.vectorizer = TfidfVectorizer(
             stop_words='english',
             ngram_range=(1, 2),

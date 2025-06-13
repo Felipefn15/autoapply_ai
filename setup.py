@@ -4,22 +4,34 @@ Setup configuration for AutoApply.AI
 from setuptools import setup, find_packages
 
 setup(
-    name="autoapply",
+    name="autoapply_ai",
     version="0.1.0",
-    description="Automated job search and application tool",
+    description="AutoApply.AI - Automated job search and application system",
     author="Felipe",
     author_email="felipe@example.com",
-    packages=find_packages(where="src"),
-    package_dir={"": "src"},
+    packages=find_packages(),
     install_requires=[
-        "typer>=0.9.0",
-        "rich>=13.0.0",
-        "loguru>=0.7.0",
-        "pydantic>=2.0.0",
-        "requests>=2.31.0",
-        "selenium>=4.0.0",
-        "groq>=0.3.0",
-        "python-dotenv>=1.0.0"
+        "aiohttp",
+        "beautifulsoup4",
+        "groq==0.27.0",
+        "loguru",
+        "PyPDF2==3.0.1",
+        "pyyaml",
+        "nltk==3.8.1",
+        "SQLAlchemy==2.0.28",
+        "scikit-learn==1.7.0",
+        "numpy==1.26.4",
+        "lxml==5.1.0",
+        "html5lib==1.1",
+        "PyMuPDF==1.23.26",
+        "playwright==1.42.0",
+        "pandas==2.2.1",
+        "python-multipart==0.0.6",
+        "fastapi==0.104.1",
+        "uvicorn==0.24.0",
+        "python-docx==1.0.1",
+        "pydantic==2.5.2",
+        "seaborn",
     ],
     entry_points={
         "console_scripts": [
@@ -33,10 +45,10 @@ setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
         "Topic :: Office/Business"
-    ]
+    ],
+    url="https://github.com/felipe/autoapply_ai",
 ) 

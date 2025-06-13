@@ -2,7 +2,7 @@
 
 # Resume Configuration
 resume:
-  path: "data/resume.pdf"  # Path to your resume PDF
+  path: "data/resumes/resume.pdf"  # Path to your resume PDF
   cache_dir: "data/cache"  # Directory to cache parsed resume data
   update_interval: 86400   # How often to re-parse resume (in seconds)
 
@@ -55,13 +55,19 @@ application:
     
   email:
     enabled: true
-    from_name: ""  # Your full name
-    from_email: ""  # Your email address
+    from_name: "Felipe Nogueira"
+    from_email: "felipefrancanogueira@gmail.com"
     smtp_host: "smtp.gmail.com"
     smtp_port: 587
-    smtp_username: ""  # Your email username
-    smtp_password: ""  # Your app-specific password
+    smtp_username: "felipefrancanogueira@gmail.com"
+    smtp_password: "blys kjpv akel psfx"
     signature: "templates/email_signature.txt"
+
+  delay_between_apps: 30  # Delay in seconds between applications
+  max_daily_apps: 50  # Maximum number of applications per day
+  working_hours:  # Time window for sending applications (24h format)
+    start: 9  # 9 AM
+    end: 17   # 5 PM
 
 # OAuth Configuration
 oauth:
@@ -71,6 +77,21 @@ oauth:
     redirect_uri: ""
     
   indeed:
+    client_id: ""
+    client_secret: ""
+    redirect_uri: ""
+    
+  remotive:
+    client_id: ""
+    client_secret: ""
+    redirect_uri: ""
+    
+  weworkremotely:
+    client_id: ""
+    client_secret: ""
+    redirect_uri: ""
+    
+  greenhouse:
     client_id: ""
     client_secret: ""
     redirect_uri: ""
@@ -85,7 +106,7 @@ api:
 logging:
   level: "INFO"
   file: "logs/autoapply.log"
-  max_size: 10485760  # 10MB
+  max_size: 10  # MB
   backup_count: 5
   format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 
@@ -98,4 +119,33 @@ storage:
   cache_dir: "data/cache"                 # Directory for caching
   jobs_dir: "data/jobs"                   # Directory for job data
   raw_jobs_dir: "data/jobs/raw"          # Directory for raw job listings
-  processed_jobs_dir: "data/jobs/processed" # Directory for processed job listings 
+  processed_jobs_dir: "data/jobs/processed" # Directory for processed job listings
+
+# Browser settings for web applications
+browser:
+  headless: true  # Run browser in headless mode
+  timeout: 30  # Timeout in seconds for page loads
+  user_agent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
+
+# Proxy settings (optional)
+proxy:
+  enabled: false
+  host: ""
+  port: 0
+  username: ""
+  password: ""
+
+# Rate limiting
+rate_limits:
+  linkedin:
+    requests_per_hour: 100
+    pause_after_error: 300  # Seconds to wait after an error
+  github:
+    requests_per_hour: 60
+    pause_after_error: 300
+  indeed:
+    requests_per_hour: 100
+    pause_after_error: 300
+  glassdoor:
+    requests_per_hour: 100
+    pause_after_error: 300 

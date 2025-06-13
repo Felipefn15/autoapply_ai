@@ -1,0 +1,30 @@
+Job Search and Application Analysis Report
+========================================
+
+Job Statistics:
+Total Jobs Found: 8
+
+Jobs by Platform:
+- HackerNews: 8
+
+Top 10 Locations:
+- unprecedented detail: 1
+- one tool: 1
+- a 100+ strong team; some of our volunteers have used their experience with us to land jobs in and out of the industry: 1
+- foster care: 1
+- python- demonstrated experience in building generative ai products- experience shipping 0 → 1 products or features, and demonstrated ability to do rapid prototyping- humble, determined, willing to take on any tasks and learn like crazypreferred:- experience building react frontend applications- experience provisioning and deploying applications on aws (e: 1
+- the law space: 1
+- tallinn, estonia, with engineering distributed across europe: 1
+- careers [at] cora: 1
+
+Salary Statistics:
+Jobs with Salary Info: 8
+Minimum: $7.50/month
+Maximum: $18,333.33/month
+Average: $6,811.48/month
+
+Application Statistics:
+Total Applications: 2779
+Successful: 0
+Failed: 2779
+Success Rate: 0.00%

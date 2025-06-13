@@ -1,0 +1,50 @@
+Job Search and Application Analysis Report
+==================================================
+Generated: 2025-06-12 21:49:43
+
+JOB SEARCH ANALYSIS
+------------------------------
+Total Jobs Found: 100
+
+Platform Distribution:
+- linkedin: 50
+- hackernews: 50
+
+Top Locations:
+- see description: 50
+- bengaluru, karnataka, india: 11
+- san francisco, ca: 4
+- pune, maharashtra, india: 3
+- toronto, ontario, canada: 3
+- new york, ny: 3
+- noida, uttar pradesh, india: 2
+- chennai, tamil nadu, india: 2
+- karnataka, india: 2
+- new jersey, united states: 2
+
+Top Companies:
+- From HN: Who is Hiring?: 50
+- Capgemini: 5
+- The Value Maximizer: 3
+- ShyftLabs: 2
+- Infosys: 2
+- Notion: 2
+- Slack: 2
+- Scotiabank: 2
+- Nike: 2
+- Google: 1
+
+Top Requirements:
+
+Top Benefits:
+
+APPLICATION ANALYSIS
+------------------------------
+Total Applications: 0
+Overall Success Rate: 0.0%
+
+Application Status:
+
+Application Methods:
+
+Platform Success Rates:

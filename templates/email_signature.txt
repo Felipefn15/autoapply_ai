@@ -1,11 +1,10 @@
 Best regards,
-
-[Your Full Name]
-[Your Professional Title]
+Felipe França Nogueira
+Full Stack Developer
+LinkedIn: https://www.linkedin.com/in/felipefrancanogueira/
+GitHub: https://github.com/felipefranca
 
 Email: [your.email@example.com]
 Phone: [+1 (555) 123-4567]
-LinkedIn: [linkedin.com/in/yourprofile]
-GitHub: [github.com/yourusername]
 
 [Optional Personal Website] 

@@ -1,0 +1,29 @@
+# API Keys Configuration
+# Replace the placeholders with your actual API keys
+
+linkedin:
+  client_id: "YOUR_LINKEDIN_CLIENT_ID"
+  client_secret: "YOUR_LINKEDIN_CLIENT_SECRET"
+
+github:
+  access_token: "YOUR_GITHUB_ACCESS_TOKEN"
+
+indeed:
+  publisher_id: "YOUR_INDEED_PUBLISHER_ID"
+  api_key: "YOUR_INDEED_API_KEY"
+
+glassdoor:
+  partner_id: "YOUR_GLASSDOOR_PARTNER_ID"
+  api_key: "YOUR_GLASSDOOR_API_KEY"
+
+scraping:
+  brightdata:
+    username: "YOUR_BRIGHTDATA_USERNAME"
+    password: "YOUR_BRIGHTDATA_PASSWORD"
+    zone: "YOUR_BRIGHTDATA_ZONE"
+  
+  scrapingbee:
+    api_key: "YOUR_SCRAPINGBEE_API_KEY"
+  
+  zyte:
+    api_key: "YOUR_ZYTE_API_KEY" 

@@ -1,12 +1,12 @@
 """
-Greenhouse Applicator Module
+Greenhouse Applicator Module - Handles job applications on Greenhouse
 """
 from typing import Dict, Optional
 import re
-from datetime import datetime
 import time
+from urllib.parse import urlparse
 
-from playwright.sync_api import Page
+from playwright.sync_api import Page, expect
 from loguru import logger
 
 from .base_applicator import BaseApplicator, ApplicationResult
@@ -14,6 +14,11 @@ from .base_applicator import BaseApplicator, ApplicationResult
 class GreenhouseApplicator(BaseApplicator):
     """Handles job applications on Greenhouse."""
     
+    def __init__(self, config: Dict):
+        """Initialize the Greenhouse applicator."""
+        super().__init__(config)
+        self.page = None  # Will be set when needed
+        
     async def is_applicable(self, url: str) -> bool:
         """Check if this applicator can handle the given URL."""
         return 'greenhouse.io' in url.lower()
@@ -29,170 +34,164 @@ class GreenhouseApplicator(BaseApplicator):
             await self.page.goto(job_data['url'])
             await self.page.wait_for_load_state('networkidle')
             
-            # Check for application form
-            apply_button = await self.page.query_selector('#apply_button')
-            if not apply_button:
-                # Try to find email in job description
-                email = await self._extract_email_from_description()
-                if email:
-                    return self.create_result(
-                        job_data,
-                        'email_required',
-                        f'Application via email: {email}'
-                    )
-                return self.create_result(
-                    job_data,
-                    'skipped',
-                    'No application method found'
-                )
+            # Handle cookie popup if present
+            await self.handle_cookies_popup()
             
-            # Click apply button
+            # Look for Apply button
+            apply_button = await self.page.query_selector("a[href*='application']")
+            if not apply_button:
+                return self.create_result(job_data, 'skipped', 'No Apply button found')
+                
+            # Start application process
             await apply_button.click()
             await self.page.wait_for_timeout(self.automation_delay * 1000)
             
-            # Fill out application form
-            success = await self._fill_application_form(resume_data)
-            if not success:
-                return self.create_result(
-                    job_data,
-                    'failed',
-                    'Failed to fill application form'
-                )
-            
-            # Submit application
-            submit_button = await self.page.query_selector('#submit_app')
-            if submit_button:
-                await submit_button.click()
-                await self.page.wait_for_timeout(self.automation_delay * 1000)
+            # Process application steps
+            while True:
+                # Check for common form fields
+                await self._fill_common_fields(resume_data)
                 
-                return self.create_result(
-                    job_data,
-                    'success',
-                    None
-                )
+                # Look for next or submit button
+                next_button = await self.page.query_selector("button[type='submit']")
+                
+                if next_button:
+                    # Get button text
+                    button_text = await next_button.text_content()
+                    
+                    # Submit application
+                    await next_button.click()
+                    await self.page.wait_for_timeout(self.automation_delay * 1000)
+                    
+                    # Check if this was the final submit
+                    if button_text and 'submit' in button_text.lower():
+                        # Check for success confirmation
+                        success_element = await self.page.query_selector("div[class*='thank']")
+                        if success_element:
+                            return self.create_result(job_data, 'success')
+                        else:
+                            return self.create_result(job_data, 'failed', 'Could not confirm submission')
+                else:
+                    # No more buttons found
+                    return self.create_result(job_data, 'failed', 'Could not complete application flow')
+                    
+        except Exception as e:
+            logger.error(f"Error applying to Greenhouse job: {str(e)}")
+            return self.create_result(job_data, 'failed', str(e))
             
-            return self.create_result(
-                job_data,
-                'failed',
-                'Could not find submit button'
-            )
+    async def _fill_common_fields(self, resume_data: Dict) -> None:
+        """Fill common form fields found in Greenhouse applications."""
+        try:
+            # Personal Information
+            await self.safe_fill("input[id*='first_name']", resume_data.get('first_name', ''))
+            await self.safe_fill("input[id*='last_name']", resume_data.get('last_name', ''))
+            await self.safe_fill("input[id*='email']", resume_data.get('email', ''))
+            await self.safe_fill("input[id*='phone']", resume_data.get('phone', ''))
+            
+            # Location
+            await self.safe_fill("input[id*='location']", resume_data.get('location', ''))
+            
+            # Resume Upload
+            resume_selector = "input[type='file'][accept*='pdf']"
+            if await self.page.query_selector(resume_selector):
+                await self.upload_resume(resume_selector, str(self.config['resume_path']))
+            
+            # Cover Letter
+            cover_letter = await self.page.query_selector("textarea[id*='cover_letter']")
+            if cover_letter:
+                await self.safe_fill("textarea[id*='cover_letter']", resume_data.get('cover_letter', ''))
+            
+            # LinkedIn Profile
+            linkedin = await self.page.query_selector("input[id*='linkedin']")
+            if linkedin:
+                await self.safe_fill("input[id*='linkedin']", resume_data.get('linkedin_url', ''))
+            
+            # Portfolio/Website
+            website = await self.page.query_selector("input[id*='website']")
+            if website:
+                await self.safe_fill("input[id*='website']", resume_data.get('portfolio_url', ''))
+            
+            # Additional Questions
+            await self._handle_additional_questions(resume_data)
             
         except Exception as e:
-            logger.error(f"Error applying on Greenhouse: {str(e)}")
-            return self.create_result(
-                job_data,
-                'failed',
-                str(e)
-            )
-    
-    async def _extract_email_from_description(self) -> Optional[str]:
-        """Extract email from job description."""
+            logger.warning(f"Error filling common fields: {str(e)}")
+            
+    async def _handle_additional_questions(self, resume_data: Dict) -> None:
+        """Handle Greenhouse-specific additional questions."""
         try:
-            description = await self.page.text_content('#content')
-            if description:
-                email_match = re.search(r'[\w\.-]+@[\w\.-]+\.\w+', description)
-                if email_match:
-                    return email_match.group(0)
-            return None
-        except:
-            return None
-    
-    async def _fill_application_form(self, resume_data: Dict) -> bool:
-        """Fill out the application form."""
-        try:
-            # Fill basic information
-            await self._fill_basic_info(resume_data)
+            # Common Greenhouse questions
+            questions = {
+                "authorized": "Are you authorized to work in",
+                "sponsorship": "Do you require sponsorship",
+                "start_date": "When can you start",
+                "notice_period": "What is your notice period",
+                "remote": "Are you willing to work remotely",
+                "onsite": "Are you willing to work onsite",
+                "travel": "Are you willing to travel",
+                "relocation": "Are you willing to relocate",
+                "education": "What is your highest level of education",
+                "experience": "How many years of experience do you have",
+                "salary": "What are your salary expectations"
+            }
             
-            # Upload resume
-            await self._upload_resume(resume_data)
-            
-            # Fill additional questions
-            await self._fill_additional_questions(resume_data)
-            
-            return True
-            
+            for key, text in questions.items():
+                # Look for questions by text content
+                question = await self.page.query_selector(f"label:has-text('{text}')")
+                if question:
+                    # Get associated input field
+                    input_id = await question.get_attribute('for')
+                    if input_id:
+                        # Handle different question types
+                        if key in ['authorized', 'remote', 'onsite']:
+                            await self.safe_select(f"select#{input_id}", 'Yes')
+                        elif key == 'sponsorship':
+                            await self.safe_select(f"select#{input_id}", 'No')
+                        elif key == 'start_date':
+                            await self.safe_fill(f"input#{input_id}", resume_data.get('start_date', 'Immediately'))
+                        elif key == 'notice_period':
+                            await self.safe_fill(f"input#{input_id}", resume_data.get('notice_period', '2 weeks'))
+                        elif key in ['travel', 'relocation']:
+                            await self.safe_select(f"select#{input_id}", resume_data.get(key, 'Yes'))
+                        elif key == 'education':
+                            await self.safe_select(f"select#{input_id}", resume_data.get('highest_education', "Bachelor's Degree"))
+                        elif key == 'experience':
+                            await self.safe_select(f"select#{input_id}", str(len(resume_data.get('work_experience', []))))
+                        elif key == 'salary':
+                            await self.safe_fill(f"input#{input_id}", resume_data.get('desired_salary', ''))
+                            
+            # Handle custom questions
+            custom_questions = await self.page.query_selector_all("div[class*='custom-question']")
+            for question in custom_questions:
+                question_text = await question.text_content()
+                if not question_text:
+                    continue
+                    
+                # Try to intelligently answer based on question content
+                question_text = question_text.lower()
+                
+                if any(word in question_text for word in ['why', 'interest', 'motivation']):
+                    # Questions about motivation/interest
+                    await self.safe_fill("textarea", resume_data.get('job_interest', ''), parent=question)
+                elif any(word in question_text for word in ['project', 'achievement']):
+                    # Questions about projects/achievements
+                    await self.safe_fill("textarea", resume_data.get('key_achievements', ''), parent=question)
+                elif any(word in question_text for word in ['challenge', 'difficult']):
+                    # Questions about challenges
+                    await self.safe_fill("textarea", resume_data.get('challenges_overcome', ''), parent=question)
+                elif any(word in question_text for word in ['strength', 'skill']):
+                    # Questions about strengths/skills
+                    skills = ', '.join(resume_data.get('key_skills', []))
+                    await self.safe_fill("textarea", skills, parent=question)
+                elif any(word in question_text for word in ['tool', 'technology', 'software']):
+                    # Questions about tools/technologies
+                    tools = ', '.join(resume_data.get('technical_skills', []))
+                    await self.safe_fill("textarea", tools, parent=question)
+                elif any(word in question_text for word in ['team', 'collaborate']):
+                    # Questions about teamwork
+                    await self.safe_fill("textarea", resume_data.get('teamwork_examples', ''), parent=question)
+                elif any(word in question_text for word in ['leadership', 'manage']):
+                    # Questions about leadership
+                    await self.safe_fill("textarea", resume_data.get('leadership_examples', ''), parent=question)
+                    
         except Exception as e:
-            logger.error(f"Error filling application form: {str(e)}")
-            return False
-    
-    async def _fill_basic_info(self, resume_data: Dict) -> None:
-        """Fill basic information fields."""
-        try:
-            # Fill first name
-            first_name = await self.page.query_selector('#first_name')
-            if first_name:
-                await first_name.fill(resume_data.get('first_name', ''))
-            
-            # Fill last name
-            last_name = await self.page.query_selector('#last_name')
-            if last_name:
-                await last_name.fill(resume_data.get('last_name', ''))
-            
-            # Fill email
-            email = await self.page.query_selector('#email')
-            if email:
-                await email.fill(resume_data.get('email', ''))
-            
-            # Fill phone
-            phone = await self.page.query_selector('#phone')
-            if phone:
-                await phone.fill(resume_data.get('phone', ''))
-            
-        except Exception as e:
-            logger.error(f"Error filling basic info: {str(e)}")
-            raise
-    
-    async def _upload_resume(self, resume_data: Dict) -> None:
-        """Upload resume file."""
-        try:
-            resume_input = await self.page.query_selector('input[type="file"]')
-            if resume_input:
-                await resume_input.set_input_files(resume_data.get('resume_path', ''))
-                await self.page.wait_for_timeout(self.automation_delay * 1000)
-        except Exception as e:
-            logger.error(f"Error uploading resume: {str(e)}")
-            raise
-    
-    async def _fill_additional_questions(self, resume_data: Dict) -> None:
-        """Fill additional application questions."""
-        try:
-            # Handle text questions
-            text_inputs = await self.page.query_selector_all('input[type="text"]')
-            for input in text_inputs:
-                label = await input.evaluate('el => el.labels[0]?.textContent')
-                if label:
-                    label = label.lower()
-                    if 'linkedin' in label:
-                        await input.fill(resume_data.get('linkedin_url', ''))
-                    elif 'github' in label:
-                        await input.fill(resume_data.get('github_url', ''))
-                    elif 'portfolio' in label:
-                        await input.fill(resume_data.get('portfolio_url', ''))
-            
-            # Handle radio buttons for yes/no questions
-            radios = await self.page.query_selector_all('input[type="radio"]')
-            for radio in radios:
-                label = await radio.evaluate('el => el.labels[0]?.textContent')
-                if label:
-                    label = label.lower()
-                    if 'authorized' in label and 'yes' in label:
-                        await radio.click()
-                    elif 'require visa' in label and 'no' in label:
-                        await radio.click()
-                    elif 'remote' in label and 'yes' in label:
-                        await radio.click()
-            
-            # Handle textareas (usually for cover letter or additional info)
-            textareas = await self.page.query_selector_all('textarea')
-            for textarea in textareas:
-                label = await textarea.evaluate('el => el.labels[0]?.textContent')
-                if label:
-                    label = label.lower()
-                    if 'cover letter' in label:
-                        await textarea.fill(resume_data.get('cover_letter', ''))
-                    elif 'additional information' in label:
-                        await textarea.fill(resume_data.get('additional_info', ''))
-            
-        except Exception as e:
-            logger.error(f"Error filling additional questions: {str(e)}")
-            raise 
+            logger.warning(f"Error handling additional questions: {str(e)}") 

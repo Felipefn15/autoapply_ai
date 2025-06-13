@@ -26,11 +26,11 @@ class ApplicationResult:
 class BaseApplicator(ABC):
     """Base class for platform-specific applicators."""
     
-    def __init__(self, page: Page, config: Dict):
+    def __init__(self, config: Dict):
         """Initialize the applicator."""
-        self.page = page
         self.config = config
         self.automation_delay = float(config.get('automation_delay', 2))
+        self.page = None  # Will be set by platform-specific applicators
         
     @abstractmethod
     async def is_applicable(self, url: str) -> bool:
