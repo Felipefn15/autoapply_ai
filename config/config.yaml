@@ -1,94 +1,139 @@
-# AutoApply.AI Configuration
-
-# Resume Configuration
-resume:
-  path: "data/resumes/resume.pdf"
-  cache_dir: "data/cache"
-  update_interval: 86400
-
-# Email Configuration
-email:
-  enabled: true
-  from_name: "Felipe França Nogueira"
-  from_email: "felipefrancanogueira@gmail.com"
-  smtp_host: "smtp.gmail.com"
+application:
+  cover_letter:
+    customize: true
+    enabled: true
+    template: templates/cover_letter.txt
+  email:
+    enabled: true
+    password: blys kjpv akel psfx
+    provider: sendgrid
+    resume_path: data/resumes/resume.pdf
+    sendgrid:
+      api_key: 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
+      from_email: felipefrancanogueira@gmail.com
+      from_name: "Felipe Fran\xE7a Nogueira"
+    signature_path: templates/email_signature.txt
+    smtp_port: 587
+    smtp_server: smtp.gmail.com
+    username: felipefrancanogueira@gmail.com
+  from_email: felipefrancanogueira@gmail.com
+  from_name: "Felipe Fran\xE7a Nogueira"
+  signature: templates/email_signature.txt
+  signature_path: templates/email_signature.txt
   smtp_port: 587
-  smtp_username: "felipefrancanogueira@gmail.com"
-  smtp_password: "your-app-specific-password"  # Replace with your Gmail App Password
-  signature_path: "templates/email_signature.txt"
-
-# LinkedIn Configuration
-linkedin:
-  enabled: true
-  email: "your-linkedin-email"  # Replace with your LinkedIn email
-  password: "your-linkedin-password"  # Replace with your LinkedIn password
-  feed_search:
-    max_posts: 100
-    days_back: 7
-    scroll_delay: 2
-    keywords:
-      - "software engineer"
-      - "developer"
-      - "full stack"
-      - "backend"
-      - "frontend"
-      - "react"
-      - "node.js"
-      - "python"
-  job_search:
-    locations:
-      - "Worldwide"
-      - "Remote"
-      - "United States"
-      - "Canada"
-      - "Europe"
-    experience_levels:
-      - "Entry Level"
-      - "Associate"
-      - "Mid-Senior Level"
-      - "Senior"
-    job_types:
-      - "Full-time"
-      - "Contract"
-      - "Remote"
-
-# Storage Configuration
-storage:
-  applications_db: "data/applications.db"
-  cover_letters_dir: "data/cover_letters"
-  attachments_dir: "data/attachments"
-
-# Logging Configuration
-logging:
-  level: "INFO"
-  file: "logs/autoapply.log"
-  max_size: 10485760
-  backup_count: 5
-
-# Job Search Configuration
+  smtp_server: smtp.gmail.com
 job_search:
+  exclude_keywords:
+  - unpaid
+  - volunteer
+  - internship
+  - no salary
+  - no pay
+  experience_level: senior
+  keywords:
+  - software engineer
+  - backend engineer
+  - python developer
+  - full stack
+  - react
+  - javascript
+  - frontend
+  - fullstack
+  - backend
+  - node.js
+  - python
+  locations:
+  - Remote
   platforms:
-    - linkedin_feed
-    - linkedin_jobs
-    - hackernews
-    - github_jobs
-  required_skills:
-    - javascript
+    greenhouse:
+      enabled: true
+      keywords:
+      - software engineer
+      - full stack
+      - react
+      search_interval: 3600
+    indeed:
+      enabled: true
+      keywords:
+      - software engineer
+      - full stack developer
+      - react developer
+      locations:
+      - Remote
+      - Rio de Janeiro
+      remote_only: true
+      search_interval: 3600
+    linkedin:
+      enabled: true
+      keywords:
+      - software engineer
+      - full stack developer
+      - react developer
+      locations:
+      - Remote
+      - Rio de Janeiro
+      remote_only: true
+      search_interval: 3600
+    remotive:
+      enabled: true
+      keywords:
+      - software engineer
+      - full stack
+      - react
+      search_interval: 3600
+    weworkremotely:
+      enabled: true
+      keywords:
+      - software engineer
+      - full stack
+      - react
+      search_interval: 3600
+  remote_only: true
+linkedin:
+  email: your-linkedin-email
+  enabled: true
+  feed_search:
+    days_back: 7
+    keywords:
+    - software engineer
+    - developer
+    - full stack
+    - backend
+    - frontend
     - react
     - node.js
-  preferred_skills:
-    - typescript
     - python
-    - aws
-  min_salary: 100000  # USD per year
-  remote_only: true
-  locations:
-    - "Remote"
-    - "Worldwide"
-    - "United States"
-    - "Canada"
-  excluded_terms:
-    - "senior staff"
-    - "principal"
-    - "director"
-    - "manager"
+    max_posts: 100
+    scroll_delay: 2
+  job_search:
+    experience_levels:
+    - Entry Level
+    - Associate
+    - Mid-Senior Level
+    - Senior
+    job_types:
+    - Full-time
+    - Contract
+    - Remote
+    locations:
+    - Worldwide
+    - Remote
+    - United States
+    - Canada
+    - Europe
+  password: your-linkedin-password
+logging:
+  backup_count: 5
+  file: logs/autoapply.log
+  format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+  level: INFO
+  max_size: 10485760
+resume:
+  cache_dir: data/cache
+  path: data/resumes/resume.pdf
+  update_interval: 86400
+resume_path: data/resumes/resume.pdf
+storage:
+  applications_db: data/applications.db
+  attachments_dir: data/attachments
+  cover_letters_dir: data/cover_letters

@@ -40,6 +40,23 @@ def extract_emails_from_text(text: str) -> List[str]:
     text = text.replace(' AT ', '@')
     text = text.replace(' DOT ', '.')
     
+    # Handle "at our website" format
+    website_patterns = [
+        (r'(\w+)\s+at\s+our\s+website', r'\1@{domain}'),
+        (r'(\w+)\s+at\s+the\s+website', r'\1@{domain}'),
+        (r'(\w+)\s+at\s+website', r'\1@{domain}'),
+        (r'email\s+(\w+)\s+at\s+(\w+)(?:\.[\w.]+)?', r'\1@\2'),
+        (r'(\w+)\s+at\s+(\w+)(?:\.[\w.]+)?', r'\1@\2')
+    ]
+    
+    # Try to extract domain from text
+    domain_match = re.search(r'https?://(?:www\.)?([^/\s]+)', text)
+    domain = domain_match.group(1) if domain_match else None
+    
+    if domain:
+        for pattern, replacement in website_patterns:
+            text = re.sub(pattern, replacement.format(domain=domain), text, flags=re.IGNORECASE)
+    
     # Common email patterns
     patterns = [
         # Standard email
@@ -52,6 +69,8 @@ def extract_emails_from_text(text: str) -> List[str]:
         r'[\w\.-]+@[\w\.-]+\s*[\[\(]dot[\]\)]\s*\w+',
         # With spaces and "at"/"dot" words
         r'[\w\.-]+\s+at\s+[\w\.-]+\s+dot\s+\w+',
+        # With "at" and domain
+        r'[\w\.-]+\s+at\s+[\w\.-]+\.\w+',
     ]
     
     emails = set()
@@ -69,6 +88,7 @@ def extract_emails_from_text(text: str) -> List[str]:
     context_patterns = [
         r'(?:email|e-mail|contact|apply|send|resume to|cv to)[^@]*?([\w\.-]+@[\w\.-]+\.\w+)',
         r'(?:email|e-mail|contact|apply|send|resume to|cv to)[^@]*?([\w\.-]+\s*@\s*[\w\.-]+\.\w+)',
+        r'(?:email|e-mail|contact|apply|send|resume to|cv to)[^@]*?([\w\.-]+\s+at\s+[\w\.-]+\.\w+)',
     ]
     
     for pattern in context_patterns:

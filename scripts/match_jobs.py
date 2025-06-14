@@ -6,11 +6,14 @@ import argparse
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional
 import re
 
 import yaml
 from loguru import logger
+
+from app.db.database import Database
+from app.job_search.post_analyzer import PostAnalyzer
 
 def load_profile(profile_path: str) -> Dict:
     """Load user profile from YAML file."""
@@ -24,27 +27,28 @@ def load_profile(profile_path: str) -> Dict:
         raise
 
 def load_jobs(jobs_dir: str) -> List[Dict]:
-    """Load jobs from JSON files."""
+    """Load jobs from JSON files in directory."""
     jobs = []
-    jobs_dir = Path(jobs_dir)
-    
     try:
-        for job_file in jobs_dir.glob("*.json"):
+        jobs_path = Path(jobs_dir)
+        if not jobs_path.exists():
+            logger.warning(f"Jobs directory not found: {jobs_dir}")
+            return []
+            
+        for file in jobs_path.glob('*.json'):
             try:
-                with open(job_file, 'r') as f:
-                    file_jobs = json.load(f)
-                    if isinstance(file_jobs, list):
-                        jobs.extend(file_jobs)
-                    logger.debug(f"Loaded jobs from {job_file}")
+                logger.debug(f"Loaded jobs from {file}")
+                with open(file) as f:
+                    jobs.extend(json.load(f))
             except Exception as e:
-                logger.error(f"Error loading {job_file}: {str(e)}")
+                logger.error(f"Error loading jobs from {file}: {str(e)}")
                 continue
                 
-        logger.info(f"Loaded {len(jobs)} total jobs")
         return jobs
+        
     except Exception as e:
         logger.error(f"Error loading jobs: {str(e)}")
-        raise
+        return []
 
 def extract_core_skills_from_text(text: str, core_skills_config: Dict) -> List[str]:
     """Extract core skills from text based on configuration."""
@@ -82,35 +86,6 @@ def extract_core_skills_from_text(text: str, core_skills_config: Dict) -> List[s
                 break
                 
     return list(found_skills)
-
-def normalize_salary(salary_str: str) -> Tuple[float, float]:
-    """Normalize salary string to monthly USD values."""
-    try:
-        # Remove non-numeric characters except digits, dots, and hyphens
-        salary_str = ''.join(c for c in salary_str.lower() if c.isdigit() or c in '.-k')
-        
-        # Handle k notation (e.g. 150k)
-        if 'k' in salary_str:
-            salary_str = salary_str.replace('k', '000')
-        
-        # Split range
-        if '-' in salary_str:
-            min_str, max_str = salary_str.split('-')
-            min_salary = float(min_str)
-            max_salary = float(max_str)
-        else:
-            min_salary = max_salary = float(salary_str)
-            
-        # If values look like yearly salaries (>20000), convert to monthly
-        if min_salary > 20000:
-            min_salary /= 12
-        if max_salary > 20000:
-            max_salary /= 12
-            
-        return min_salary, max_salary
-        
-    except Exception:
-        return 0, float('inf')
 
 def detect_remote(job: Dict) -> bool:
     """Detect if a job is remote friendly."""
@@ -182,184 +157,120 @@ def extract_email_from_text(text: str) -> str:
         
     return ''
 
-def match_jobs(jobs: List[Dict], profile: Dict) -> List[Dict]:
+def match_jobs(jobs: List[Dict], profile: Dict, db: Database) -> List[Dict]:
     """Match jobs with user profile based on core skills."""
     matched_jobs = []
+    analyzer = PostAnalyzer()
     
     try:
         # Get profile preferences
-        core_skills_config = profile.get('matching', {}).get('core_skills', [
+        core_skills = profile.get('matching', {}).get('core_skills', [
             "react", "react native", "javascript", "node.js"
         ])
+        min_match_score = profile.get('matching', {}).get('min_match_score', 25)
+        remote_only = profile.get('matching', {}).get('remote_only', True)
         
         logger.info("\nStarting job matching process:")
         logger.info("=" * 50)
-        logger.info(f"Looking for jobs with any of these skills: {', '.join(core_skills_config)}")
-        logger.info("Remote only: True")
+        logger.info(f"Looking for jobs with any of these skills: {', '.join(core_skills)}")
+        logger.info(f"Remote only: {remote_only}")
         logger.info("-" * 50)
         
         for job in jobs:
-            try:
-                # Check if job is remote first - if not, skip it
-                is_remote = detect_remote(job)
-                if not is_remote:
-                    continue
-                
-                # Extract skills from job description and title
-                job_skills = set()
-                
-                # From title
-                if 'title' in job:
-                    title_skills = extract_core_skills_from_text(job['title'], core_skills_config)
-                    job_skills.update(title_skills)
-                
-                # From description
-                if 'description' in job:
-                    desc_skills = extract_core_skills_from_text(job['description'], core_skills_config)
-                    job_skills.update(desc_skills)
-                    
-                    # Extract email from description
-                    if 'email' not in job or not job['email']:
-                        job['email'] = extract_email_from_text(job['description'])
-                
-                # Calculate match score based on skills
-                if job_skills:
-                    # Base score is percentage of core skills found
-                    score = len(job_skills) / len(core_skills_config)
-                    
-                    # Store match details
-                    job['match_score'] = score * 100  # Convert to percentage
-                    job['found_skills'] = list(job_skills)
-                    job['remote'] = is_remote
-                    
-                    # Log job details
-                    logger.info("\nAnalyzing job: {}".format(job.get('title', 'Unknown')))
-                    logger.info("Match score: {:.1f}%".format(job['match_score']))
-                    logger.info("Found skills: {}".format(', '.join(job['found_skills'])))
-                    logger.info("Remote match: {}".format(job['remote']))
-                    
-                    # Add salary info if available
-                    if 'salary' in job:
-                        min_salary, max_salary = normalize_salary(job['salary'])
-                        job['salary_min'] = min_salary
-                        job['salary_max'] = max_salary
-                        logger.info("Salary match: {}".format(bool(min_salary)))
-                    else:
-                        logger.info("Salary match: False")
-                    
-                    # Determine application method
-                    if job.get('email'):
-                        job['application_method'] = 'email'
-                    elif 'linkedin.com' in job.get('url', '').lower():
-                        job['application_method'] = 'linkedin'
-                    else:
-                        job['application_method'] = 'unknown'
-                    logger.info("Application method: {}".format(job['application_method']))
-                    
-                    logger.info("-" * 50)
-                    
-                    # Add to matched jobs if score is high enough
-                    if score >= 0.3:  # 30% match threshold
-                        matched_jobs.append(job)
-                        
-            except Exception as e:
-                logger.error(f"Error processing job: {str(e)}")
+            # Skip if no title or description
+            if not job.get('title') or not job.get('description'):
                 continue
                 
-        logger.info(f"\nFound {len(matched_jobs)} matching jobs")
+            # Analyze job post
+            job = analyzer.analyze(job)
+            
+            # Calculate match score
+            match_score = 0
+            found_skills = []
+            
+            # Check skills match
+            description = job.get('description', '').lower()
+            title = job.get('title', '').lower()
+            
+            for skill in core_skills:
+                if skill.lower() in description or skill.lower() in title:
+                    match_score += 25
+                    found_skills.append(skill)
+                    
+            # Check remote match
+            is_remote = job.get('remote', False)
+            remote_match = not remote_only or is_remote
+            if remote_match:
+                match_score += 25
+                
+            # Check salary match (if provided)
+            salary_min = job.get('salary_min')
+            salary_max = job.get('salary_max')
+            target_salary = profile.get('target_salary')
+            
+            salary_match = False
+            if target_salary and salary_min and salary_max:
+                target_min, target_max = map(float, target_salary.split('-'))
+                if salary_min <= target_max and salary_max >= target_min:
+                    match_score += 25
+                    salary_match = True
+                    
+            # Add to matched jobs if score meets minimum
+            if match_score >= min_match_score:
+                # Log match details
+                logger.info(f"\nAnalyzing job: {job.get('title')}")
+                logger.info(f"Match score: {match_score}%")
+                logger.info(f"Found skills: {', '.join(found_skills)}")
+                logger.info(f"Remote match: {remote_match}")
+                logger.info(f"Salary match: {salary_match}")
+                
+                # Add to database
+                job_id = db.add_job(job)
+                if job_id:
+                    db.add_application(
+                        job_id=job_id,
+                        match_score=match_score,
+                        method=job.get('application_method', 'unknown'),
+                        status='pending'
+                    )
+                    matched_jobs.append(job)
+                    
+                logger.info(f"Application method: {job.get('application_method', 'unknown')}")
+                logger.info("-" * 50)
+                
         return matched_jobs
         
     except Exception as e:
         logger.error(f"Error matching jobs: {str(e)}")
-        raise
+        return []
 
-def save_matches(matched_jobs: List[Dict], output_dir: str):
-    """Save matched jobs to file."""
+def save_matches(matches: List[Dict], output_dir: str):
+    """Save matched jobs to JSON file."""
     try:
-        output_dir = Path(output_dir)
-        output_dir.mkdir(parents=True, exist_ok=True)
+        # Create output directory if it doesn't exist
+        output_path = Path(output_dir)
+        output_path.mkdir(parents=True, exist_ok=True)
+        
+        # Generate filename with timestamp
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"matches_{timestamp}.json"
+        filepath = output_path / filename
         
         # Save matches
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        matches_file = output_dir / f"matches_{timestamp}.json"
-        
-        with open(matches_file, 'w') as f:
-            json.dump(matched_jobs, f, indent=2)
+        with open(filepath, 'w') as f:
+            json.dump(matches, f, indent=2)
             
-        logger.info(f"Saved {len(matched_jobs)} matches to {matches_file}")
-        
-        # Generate report
-        report = []
-        report.append("Job Matching Report")
-        report.append("=" * 30)
-        report.append(f"\nTotal Matches: {len(matched_jobs)}")
-        
-        # Group by match score ranges
-        score_ranges = {
-            "Excellent (80-100%)": [],
-            "Good (60-79%)": [],
-            "Fair (40-59%)": [],
-            "Poor (0-39%)": []
-        }
-        
-        for job in matched_jobs:
-            if job['match_score'] >= 80:
-                score_ranges["Excellent (80-100%)"].append(job)
-            elif job['match_score'] >= 60:
-                score_ranges["Good (60-79%)"].append(job)
-            elif job['match_score'] >= 40:
-                score_ranges["Fair (40-59%)"].append(job)
-            else:
-                score_ranges["Poor (0-39%)"].append(job)
-        
-        report.append("\nMatches by Score Range:")
-        for range_name, jobs in score_ranges.items():
-            report.append(f"\n{range_name}: {len(jobs)} jobs")
-            
-        report.append("\nDetailed Job Matches:")
-        for job in matched_jobs:
-            report.append(f"\n{job['title']} at {job['company']}")
-            report.append(f"Match Score: {job['match_score']}%")
-            report.append(f"Location: {job['location']}")
-            if job.get('salary_range'):
-                report.append(f"Salary Range: {job['salary_range']}")
-            report.append(f"Remote: {'Yes' if job.get('remote') else 'No'}")
-            report.append(f"Matched Skills: {', '.join(job['found_skills'])}")
-            report.append(f"Application Method: {job['application_method']}")
-            report.append(f"URL: {job['url']}\n")
-            
-        report_file = output_dir / f"matches_report_{timestamp}.txt"
-        with open(report_file, 'w') as f:
-            f.write('\n'.join(report))
-            
-        logger.info(f"Saved matching report to {report_file}")
+        logger.info(f"\nSaved {len(matches)} matches to {filepath}")
         
     except Exception as e:
         logger.error(f"Error saving matches: {str(e)}")
-        raise
 
 def main():
     """Main function."""
-    parser = argparse.ArgumentParser(description="Match jobs with user profile")
-    
-    parser.add_argument(
-        "--profile",
-        help="Path to user profile YAML file",
-        default="config/profile.yaml"
-    )
-    
-    parser.add_argument(
-        "--jobs-dir",
-        help="Directory containing job JSON files",
-        default="data/jobs"
-    )
-    
-    parser.add_argument(
-        "--output-dir",
-        help="Output directory for matched jobs",
-        default="data/matches"
-    )
-    
+    parser = argparse.ArgumentParser(description='Match jobs with user profile')
+    parser.add_argument('--profile', default='config/profile.yaml', help='Path to profile YAML')
+    parser.add_argument('--jobs-dir', default='data/jobs', help='Path to jobs directory')
+    parser.add_argument('--output-dir', default='data/matches', help='Path to output directory')
     args = parser.parse_args()
     
     try:
@@ -367,17 +278,25 @@ def main():
         profile = load_profile(args.profile)
         jobs = load_jobs(args.jobs_dir)
         
-        # Match jobs with profile
-        matched_jobs = match_jobs(jobs, profile)
+        if not jobs:
+            logger.warning("No jobs found to process")
+            return
+            
+        # Initialize database
+        db = Database()
         
-        # Save results
-        save_matches(matched_jobs, args.output_dir)
+        # Match jobs
+        matches = match_jobs(jobs, profile, db)
         
-    except KeyboardInterrupt:
-        logger.info("Matching stopped by user")
+        # Save matches
+        if matches:
+            save_matches(matches, args.output_dir)
+        else:
+            logger.warning("No matches found")
+            
     except Exception as e:
-        logger.error(f"Error: {str(e)}")
+        logger.error(f"Error in main: {str(e)}")
         raise
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main() 

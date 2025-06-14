@@ -28,28 +28,99 @@ from app.utils.text_extractor import extract_emails_from_text
 from .base_applicator import BaseApplicator, ApplicationResult
 
 class ApplicatorManager:
-    """Manages different job application methods."""
+    """Manager class for handling different types of job applications."""
     
-    def __init__(self, config: Dict = None):
-        """Initialize the manager."""
-        self.config = config or {}
+    def __init__(self, config: Dict):
+        """Initialize applicator manager."""
+        self.config = config
         self.browser = None
         self.context = None
         self.page = None
         
-    async def setup(self):
-        """Set up the manager."""
-        await self._initialize_browser()
-        
-    async def apply_to_job(self, job: Dict) -> ApplicationResult:
+    async def apply(self, job: Dict) -> ApplicationResult:
         """Apply to a job using the appropriate method."""
         try:
+            # First check if job is unpaid/volunteer
+            title = job.get('title', '').lower()
+            description = job.get('description', '').lower()
+            
+            # Check for unpaid/volunteer indicators
+            unpaid_indicators = ['unpaid', 'volunteer', 'internship', 'no salary', 'no pay']
+            if any(indicator in title or indicator in description for indicator in unpaid_indicators):
+                logger.warning("❌ Skipping unpaid/volunteer position")
+                return ApplicationResult(
+                    status='skipped',
+                    error='Position is unpaid/volunteer',
+                    application_method='none'
+                )
+            
+            # Then check if job is remote
+            location = job.get('location', '').lower()
+            
+            # Check for non-remote indicators
+            non_remote_indicators = ['on-site', 'onsite', 'in office', 'hybrid']
+            if any(indicator in location or indicator in description or indicator in title for indicator in non_remote_indicators):
+                logger.warning("❌ Skipping non-remote job")
+                return ApplicationResult(
+                    status='skipped',
+                    error='Job is not remote',
+                    application_method='none'
+                )
+                
+            # Check for remote indicators
+            remote_indicators = ['remote', 'work from home', 'wfh', 'virtual', 'distributed team']
+            is_remote = any(indicator in location or indicator in description or indicator in title for indicator in remote_indicators)
+            
+            if not is_remote:
+                logger.warning("❌ Skipping job - remote status unclear")
+                return ApplicationResult(
+                    status='skipped',
+                    error='Remote status unclear',
+                    application_method='none'
+                )
+            
+            # Load resume data
+            resume_data = {}
+            resume_path = self.config.get('application', {}).get('email', {}).get('resume_path')
+            if resume_path and Path(resume_path).exists():
+                from app.resume.parser import ResumeParser
+                parser = ResumeParser()
+                resume_data = parser.parse(resume_path)
+            else:
+                logger.warning(f"Resume not found at path: {resume_path}")
+                resume_data = {
+                    'first_name': self.config.get('first_name', ''),
+                    'last_name': self.config.get('last_name', ''),
+                    'email': self.config.get('email', ''),
+                    'phone': self.config.get('phone', ''),
+                    'skills': self.config.get('skills', []),
+                    'experience_years': self.config.get('experience_years', '')
+                }
+            
+            logger.info("\n" + "="*50)
+            logger.info(f"Starting application process for:")
+            logger.info(f"Position: {job.get('title', 'Unknown Position')}")
+            logger.info(f"Company: {job.get('company', 'Unknown Company')}")
+            logger.info(f"Location: {job.get('location', 'Unknown Location')}")
+            logger.info(f"URL: {job.get('url', 'No URL')}")
+            logger.info("="*50)
+            
+            # Log job description
+            logger.info("\nJob Description:")
+            logger.info("-"*50)
+            desc = job.get('description', 'No description available')
+            # Split description into lines and log each line
+            for line in desc.split('\n'):
+                if line.strip():  # Only log non-empty lines
+                    logger.info(line.strip())
+            logger.info("-"*50 + "\n")
+            
             # First, try to find email in the job data
             email = job.get('email')
             
             # If no email found, try to extract from description
             if not email:
-                logger.info("No email found in job data, trying to extract from description...")
+                logger.info("No email found in job data, analyzing description...")
                 description = job.get('description', '')
                 title = job.get('title', '')
                 company = job.get('company', '')
@@ -60,10 +131,10 @@ class ApplicatorManager:
                 
                 if emails:
                     email = emails[0]  # Use the first found email
-                    logger.info(f"Found email address: {email}")
+                    logger.info(f"✅ Found email address in description: {email}")
                     job['email'] = email
                 else:
-                    logger.warning("No email address found in job description")
+                    logger.warning("❌ No email address found in job description")
                     
                     # Try to find company domain from URL
                     url = job.get('url', '')
@@ -72,6 +143,7 @@ class ApplicatorManager:
                         domain_match = re.search(r'https?://(?:www\.)?([^/]+)', url)
                         if domain_match:
                             domain = domain_match.group(1)
+                            logger.info(f"Extracted domain from URL: {domain}")
                             # Try common email formats
                             potential_emails = [
                                 f"jobs@{domain}",
@@ -80,36 +152,47 @@ class ApplicatorManager:
                                 f"hr@{domain}",
                                 f"hiring@{domain}"
                             ]
-                            logger.info(f"Trying common email formats with domain {domain}")
+                            logger.info("Trying common email formats:")
                             for potential_email in potential_emails:
-                                # Here you might want to validate if the email exists
-                                # For now, we'll use the first format as a fallback
-                                email = potential_emails[0]
-                                job['email'] = email
-                                logger.info(f"Using fallback email address: {email}")
-                                break
+                                logger.info(f"- {potential_email}")
+                            # For now, we'll use the first format as a fallback
+                            email = potential_emails[0]
+                            job['email'] = email
+                            logger.info(f"Using fallback email address: {email}")
+                        else:
+                            logger.warning("❌ Could not extract domain from URL")
             
             if email:
+                logger.info("\nAttempting email application...")
                 # Try email application
                 email_applicator = EmailApplicator(self.config)
-                result = await email_applicator.apply(job)
+                result = await email_applicator.apply(job, resume_data)
                 
                 if result.status == 'success':
+                    logger.success("✅ Email application successful!")
                     return result
                     
-                logger.warning(f"Email application failed: {result.error_message}")
+                logger.warning(f"❌ Email application failed: {result.error}")
+                logger.info("Trying alternative application methods...")
             
             # If email application failed or no email found, try direct application
             if job.get('url', '').startswith('https://www.linkedin.com/'):
-                logger.info("Trying LinkedIn direct application...")
+                logger.info("\nDetected LinkedIn URL, attempting direct application...")
                 linkedin_applicator = LinkedInApplicator(self.config)
-                return await linkedin_applicator.apply(job)
+                return await linkedin_applicator.apply(job, resume_data)
             
             # If we get here, no application method worked
             error_msg = "No valid application method found"
-            if result and result.error_message:
-                error_msg = result.error_message
-                
+            if result and result.error:
+                error_msg = f"All application methods failed. Last error: {result.error}"
+            
+            logger.error(f"❌ {error_msg}")
+            logger.info("\nApplication attempt summary:")
+            logger.info(f"- Email found: {'Yes' if email else 'No'}")
+            logger.info(f"- LinkedIn URL: {'Yes' if job.get('url', '').startswith('https://www.linkedin.com/') else 'No'}")
+            logger.info(f"- Final status: Failed")
+            logger.info("="*50)
+            
             return ApplicationResult(
                 status='failed',
                 error=error_msg,
@@ -117,10 +200,11 @@ class ApplicatorManager:
             )
             
         except Exception as e:
-            logger.error(f"Error in application process: {str(e)}")
+            error_msg = f"Unexpected error in application process: {str(e)}"
+            logger.error(f"❌ {error_msg}")
             return ApplicationResult(
                 status='failed',
-                error=str(e),
+                error=error_msg,
                 application_method='unknown'
             )
             
@@ -154,7 +238,7 @@ class ApplicatorManager:
         """Get resume data from config."""
         resume_config = self.config.get('resume', {})
         return {
-            'resume_path': self.config.get('resume_path', 'resume.pdf'),
+            'resume_path': self.config.get('application', {}).get('email', {}).get('resume_path'),
             'first_name': resume_config.get('first_name', ''),
             'last_name': resume_config.get('last_name', ''),
             'email': resume_config.get('email', ''),

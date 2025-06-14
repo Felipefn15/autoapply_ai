@@ -31,83 +31,63 @@ import sys
 # Add parent directory to path
 sys.path.append(str(Path(__file__).parent.parent))
 
-def load_config() -> dict:
-    """Load configuration from file."""
+def load_config() -> Dict:
+    """Load configuration from config file."""
     try:
-        config_path = Path('config/config.yaml')
+        config_path = Path("config/config.yaml")
         if not config_path.exists():
-            # Create default config
-            config = {
-                'resume_path': 'resume.pdf',
-                'resume': {
-                    'first_name': 'Your',
-                    'last_name': 'Name',
-                    'email': 'your.email@gmail.com',
-                    'phone': '+1 (555) 123-4567',
-                    'experience_years': 5,
-                    'skills': [
-                        'Python',
-                        'JavaScript',
-                        'React',
-                        'Node.js',
-                        'AWS'
-                    ],
-                    'desired_salary': '120000',
-                    'willing_to_relocate': True,
-                    'willing_to_travel': True
-                },
-                'email': {
-                    'smtp_server': 'smtp.gmail.com',
-                    'smtp_port': 587,
-                    'username': 'your.email@gmail.com',
-                    'password': 'your-app-specific-password'
-                },
-                'linkedin': {
-                    'username': 'your.email@gmail.com',
-                    'password': 'your-linkedin-password'
-                }
-            }
+            logger.error("Configuration file not found")
+            return {}
             
-            # Create config directory
-            config_path.parent.mkdir(exist_ok=True)
-            
-            # Save default config
-            with open(config_path, 'w') as f:
-                yaml.dump(config, f, default_flow_style=False)
-                
-            logger.warning(f"Created default config at {config_path}. Please update it with your credentials.")
-            return config
-            
-        # Load existing config
         with open(config_path) as f:
             return yaml.safe_load(f)
-            
     except Exception as e:
-        logger.error(f"Error loading config: {str(e)}")
+        logger.error(f"Error loading configuration: {str(e)}")
         return {}
 
-async def load_matches(matches_dir: str) -> List[Dict]:
-    """Load matched jobs from the most recent matches file."""
-    matches_path = Path(matches_dir)
-    if not matches_path.exists():
-        logger.error(f"Matches directory not found: {matches_dir}")
-        return []
-        
-    # Find most recent matches file
-    matches_files = list(matches_path.glob("matches_*.json"))
-    if not matches_files:
-        logger.error(f"No matches files found in {matches_dir}")
-        return []
-        
-    latest_file = max(matches_files, key=lambda f: f.stat().st_mtime)
-    
+def load_jobs() -> List[Dict]:
+    """Load matched jobs from the matches directory."""
     try:
-        with open(latest_file) as f:
+        # Get matches directory from command line arguments
+        parser = argparse.ArgumentParser()
+        parser.add_argument('--matches-dir', type=str, required=True, help='Directory containing matched jobs')
+        parser.add_argument('--resume', type=str, required=True, help='Path to resume PDF')
+        args = parser.parse_args()
+        
+        matches_dir = Path(args.matches_dir)
+        if not matches_dir.exists():
+            logger.error(f"Matches directory not found: {matches_dir}")
+            return []
+            
+        # Find the most recent matches file
+        matches_files = list(matches_dir.glob("matches_*.json"))
+        if not matches_files:
+            logger.error("No matches files found")
+            return []
+            
+        latest_matches_file = max(matches_files, key=lambda x: x.stat().st_mtime)
+        logger.info(f"Loading matches from: {latest_matches_file}")
+        
+        # Load matches
+        with open(latest_matches_file) as f:
             matches = json.load(f)
-        logger.info(f"Loaded {len(matches)} matches from {latest_file}")
+            
+        if not matches:
+            logger.warning("No matches found in file")
+            return []
+            
+        # Update config with resume path
+        config = load_config()
+        config['resume_path'] = args.resume
+        
+        # Save updated config
+        with open("config/config.yaml", 'w') as f:
+            yaml.dump(config, f)
+            
         return matches
+        
     except Exception as e:
-        logger.error(f"Failed to load matches: {e}")
+        logger.error(f"Error loading matches: {str(e)}")
         return []
 
 def load_resume(resume_path: str) -> str:
@@ -178,31 +158,45 @@ def save_results(results: List[Dict], output_dir: str):
         raise
 
 def extract_application_info(job: Dict) -> Dict:
-    """Extract application information from job posting."""
-    # Extract emails
-    emails = extract_emails_from_text(job.get("description", ""))
-    
-    # Extract application method
-    method = job.get("application_method", "unknown")
-    if emails:
-        method = "email"
-    elif "linkedin.com" in job.get("url", "").lower():
-        method = "linkedin"
-    elif any(phrase in job.get("description", "").lower() for phrase in [
-        "apply on our website",
-        "apply through our website",
-        "apply at our website",
-        "apply here:",
-        "apply at:"
-    ]):
-        method = "website"
-        
-    return {
-        "emails": emails,
-        "method": method,
-        "url": job.get("url"),
-        "platform": job.get("platform", "unknown")
+    """Extract application method and contact information from job data."""
+    info = {
+        "platform": job.get("platform", "unknown"),
+        "method": "unknown",
+        "emails": []
     }
+    
+    # Check for direct application URL
+    if job.get("apply_url") or (job.get("url", "").startswith("https://www.linkedin.com/") or 
+                               job.get("url", "").startswith("https://weworkremotely.com/")):
+        info["method"] = "direct"
+        
+    # Check for email addresses
+    description = job.get("description", "")
+    title = job.get("title", "")
+    company = job.get("company", "")
+    
+    # Try to extract email from all available text
+    all_text = f"{title}\n{company}\n{description}"
+    emails = extract_emails_from_text(all_text)
+    
+    if emails:
+        info["method"] = "email"
+        info["emails"] = emails
+        
+    # If no application method found, try to infer from URL
+    if info["method"] == "unknown" and job.get("url"):
+        url = job.get("url", "").lower()
+        if "linkedin.com" in url:
+            info["method"] = "direct"
+            info["platform"] = "linkedin"
+        elif "weworkremotely.com" in url:
+            info["method"] = "direct"
+            info["platform"] = "weworkremotely"
+        elif "github.com" in url:
+            info["method"] = "direct"
+            info["platform"] = "github"
+        
+    return info
 
 async def apply_to_jobs(matches: List[Dict], config: Dict, resume_path: str) -> None:
     """Apply to matched jobs."""
@@ -482,70 +476,82 @@ def apply_for_jobs(jobs: List[Dict], profile: Dict, config: Dict) -> List[Dict]:
         raise
 
 async def run_script():
-    """Run the script."""
+    """Run the job application script."""
     try:
-        logger.info("Starting job application process")
+        logger.info("\nStarting job application process")
         logger.info("=" * 50)
         
         # Load configuration
-        logger.info("Loading configuration...")
         config = load_config()
-        
-        # Initialize database
-        logger.info("Connecting to database...")
-        db = Database()
-        
-        # Get pending applications
-        logger.info("Fetching pending applications...")
-        pending_jobs = db.get_pending_applications()
-        logger.info(f"Found {len(pending_jobs)} pending applications")
-        
-        if not pending_jobs:
-            logger.warning("No pending applications found. Exiting...")
-            return
+        if not config:
+            raise ValueError("Failed to load configuration")
             
+        # Load jobs data
+        jobs = load_jobs()
+        if not jobs:
+            raise ValueError("No jobs found to process")
+            
+        logger.info(f"\nFound {len(jobs)} jobs to process")
+        logger.info("=" * 50)
+        
         # Initialize applicator manager
-        logger.info("Initializing applicator manager...")
         manager = ApplicatorManager(config)
         
         # Process each job
-        for i, job in enumerate(pending_jobs, 1):
+        results = {
+            'total': len(jobs),
+            'success': 0,
+            'failed': 0,
+            'errors': {}
+        }
+        
+        for i, job in enumerate(jobs, 1):
             try:
-                logger.info("\nProcessing application {}/{}: {}".format(
-                    i, len(pending_jobs), job.get('title', 'Unknown Position')
-                ))
+                logger.info(f"\nProcessing job {i}/{len(jobs)}")
+                logger.info(f"Title: {job.get('title', 'Unknown Position')}")
                 logger.info(f"Company: {job.get('company', 'Unknown Company')}")
                 logger.info(f"URL: {job.get('url', 'No URL')}")
-                logger.info(f"Application method: {job.get('application_method', 'unknown')}")
                 logger.info("-" * 50)
                 
                 # Apply for job
-                logger.info("Starting application process...")
                 result = await manager.apply(job)
                 
-                # Update database
+                # Update statistics
                 if result.status == 'success':
-                    logger.success("✅ Application successful!")
-                    db.mark_as_applied(job['id'])
+                    results['success'] += 1
+                    logger.success(f"✅ Successfully applied to {job.get('title')} at {job.get('company')}")
                 else:
-                    logger.error(f"❌ Application failed: {result.error}")
-                    db.mark_as_failed(job['id'], result.error)
+                    results['failed'] += 1
+                    error_type = result.error.split(':')[0] if result.error else 'Unknown error'
+                    results['errors'][error_type] = results['errors'].get(error_type, 0) + 1
+                    logger.error(f"❌ Failed to apply: {result.error}")
                 
                 logger.info("=" * 50)
                 
             except Exception as e:
-                logger.error(f"Error processing job {job.get('id')}: {str(e)}")
-                db.mark_as_failed(job['id'], str(e))
+                results['failed'] += 1
+                error_type = str(e).split(':')[0]
+                results['errors'][error_type] = results['errors'].get(error_type, 0) + 1
+                logger.error(f"Error processing job: {str(e)}")
                 continue
-                
-        logger.success("\nApplication process completed!")
-        logger.info("Summary:")
-        logger.info(f"Total jobs processed: {len(pending_jobs)}")
+        
+        # Print summary
+        logger.info("\n📊 Application Process Summary")
+        logger.info("=" * 50)
+        logger.info(f"Total jobs processed: {results['total']}")
+        logger.info(f"Successful applications: {results['success']} ({(results['success']/results['total'])*100:.1f}%)")
+        logger.info(f"Failed applications: {results['failed']} ({(results['failed']/results['total'])*100:.1f}%)")
+        
+        if results['errors']:
+            logger.info("\nCommon error types:")
+            for error_type, count in sorted(results['errors'].items(), key=lambda x: x[1], reverse=True):
+                logger.info(f"- {error_type}: {count} occurrences")
+        
+        logger.info("\n✨ Process completed!")
         
     except Exception as e:
         logger.error(f"Error running script: {str(e)}")
         raise
-        
     finally:
         # Clean up resources
         if 'manager' in locals():

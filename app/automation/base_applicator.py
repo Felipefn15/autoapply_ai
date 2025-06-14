@@ -19,6 +19,7 @@ class ApplicationResult:
     """Result of a job application attempt."""
     status: str  # 'success', 'failed', or 'skipped'
     error: Optional[str] = None  # Error message if status is 'failed'
+    application_method: str = 'unknown'  # Method used for application: 'direct', 'email', 'form', etc.
 
 class BaseApplicator(ABC):
     """Base class for platform-specific applicators."""
