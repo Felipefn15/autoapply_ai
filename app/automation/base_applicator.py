@@ -17,60 +17,8 @@ from .application_logger import ApplicationLogger
 @dataclass
 class ApplicationResult:
     """Result of a job application attempt."""
-    company: str
-    position: str
-    url: str
-    platform: str
-    status: str  # 'success', 'failed', 'skipped'
-    application_method: str  # 'direct', 'email', 'form'
-    direct_apply_status: bool  # Whether direct application was successful
-    email_sent_status: bool  # Whether email was sent successfully
-    application_id: Optional[str] = None
-    error_message: Optional[str] = None
-    applied_at: Optional[datetime] = None
-    notes: Optional[str] = None
-
-    def to_log_string(self) -> str:
-        """Convert result to a log-friendly string."""
-        status_parts = []
-        
-        # Add main status with color
-        status_color = {
-            'success': '🟢',
-            'failed': '🔴',
-            'skipped': '🟡'
-        }.get(self.status.lower(), '⚪')
-        
-        status_parts.append(f"{status_color} [{self.status.upper()}]")
-        
-        # Add application methods with icons
-        methods = []
-        if self.direct_apply_status:
-            methods.append("direct=✅")
-        elif self.application_method == 'direct':
-            methods.append("direct=❌")
-            
-        if self.email_sent_status:
-            methods.append("email=✅")
-        elif self.application_method == 'email':
-            methods.append("email=❌")
-            
-        if methods:
-            status_parts.append(" | ".join(methods))
-            
-        # Add error if present
-        if self.error_message:
-            status_parts.append(f"❗error={self.error_message[:50]}...")
-            
-        # Add timestamp
-        if self.applied_at:
-            status_parts.append(f"📅 {self.applied_at.strftime('%Y-%m-%d %H:%M:%S')}")
-            
-        # Add notes if present
-        if self.notes:
-            status_parts.append(f"📝 {self.notes[:50]}...")
-            
-        return f"{' '.join(status_parts)}\n🎯 {self.position}\n🏢 {self.company}\n🔗 {self.url}\n"
+    status: str  # 'success', 'failed', or 'skipped'
+    error: Optional[str] = None  # Error message if status is 'failed'
 
 class BaseApplicator(ABC):
     """Base class for platform-specific applicators."""
@@ -85,17 +33,17 @@ class BaseApplicator(ABC):
     @abstractmethod
     async def is_applicable(self, url: str) -> bool:
         """Check if this applicator can handle the given URL."""
-        pass
+        return True
         
     @abstractmethod
     async def login_if_needed(self) -> bool:
         """Perform login if required. Return True if successful."""
-        pass
+        return True
         
     @abstractmethod
     async def apply(self, job_data: Dict, resume_data: Dict) -> ApplicationResult:
         """Apply to the job."""
-        pass
+        raise NotImplementedError
         
     async def safe_click(self, selector: str, delay: float = None) -> bool:
         """Safely click an element with retry."""
@@ -168,25 +116,14 @@ class BaseApplicator(ABC):
     def create_result(self, job_data: Dict, status: str, error: Optional[str] = None) -> ApplicationResult:
         """Create an application result object."""
         result = ApplicationResult(
-            company=job_data.get('company', 'Unknown'),
-            position=job_data.get('title', 'Unknown'),
-            url=job_data.get('url', ''),
-            platform=job_data.get('platform', 'Unknown'),
             status=status,
-            application_method=job_data.get('application_method', 'direct'),
-            direct_apply_status=status == 'success' and job_data.get('application_method') == 'direct',
-            email_sent_status=status == 'success' and job_data.get('application_method') == 'email',
-            application_id=job_data.get('id'),
-            error_message=error,
-            applied_at=datetime.now(),
-            notes=job_data.get('notes')
+            error=error
         )
         
         # Log the application attempt
         self.logger.log_application(
             job=job_data,
             status=status,
-            method=result.application_method,
             error=error,
             notes=job_data.get('notes')
         )

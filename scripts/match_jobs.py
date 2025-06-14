@@ -6,7 +6,8 @@ import argparse
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Tuple
+import re
 
 import yaml
 from loguru import logger
@@ -45,162 +46,227 @@ def load_jobs(jobs_dir: str) -> List[Dict]:
         logger.error(f"Error loading jobs: {str(e)}")
         raise
 
-def extract_skills_from_text(text: str) -> List[str]:
-    """Extract skills from text."""
-    common_skills = [
-        'python', 'javascript', 'typescript', 'react', 'node', 'aws',
-        'docker', 'kubernetes', 'sql', 'nosql', 'mongodb', 'postgresql',
-        'redis', 'kafka', 'elasticsearch', 'graphql', 'rest', 'api',
-        'microservices', 'ci/cd', 'git', 'agile', 'scrum', 'java',
-        'c++', 'go', 'rust', 'scala', 'ruby', 'php', 'html', 'css',
-        'sass', 'less', 'webpack', 'babel', 'vue', 'angular', 'django',
-        'flask', 'fastapi', 'spring', 'hibernate', 'junit', 'jest',
-        'cypress', 'selenium', 'jenkins', 'terraform', 'ansible',
-        'prometheus', 'grafana', 'datadog', 'newrelic', 'ai', 'ml',
-        'machine learning', 'deep learning', 'nlp', 'computer vision',
-        'data science', 'data engineering', 'etl', 'hadoop', 'spark',
-        'airflow', 'dbt', 'tableau', 'power bi', 'looker', 'full stack',
-        'frontend', 'backend', 'devops', 'sre', 'security'
-    ]
-    
-    found_skills = set()
+def extract_core_skills_from_text(text: str, core_skills_config: Dict) -> List[str]:
+    """Extract core skills from text based on configuration."""
+    # Convert text to lowercase for case-insensitive matching
     text = text.lower()
     
-    for skill in common_skills:
-        if skill in text:
-            found_skills.add(skill)
+    # Core skills and their variations from config
+    core_skills = {}
+    for skill in core_skills_config:
+        skill_lower = skill.lower()
+        variations = []
+        
+        # Add base skill
+        variations.append(skill_lower)
+        
+        # Add common variations
+        if skill_lower == "react":
+            variations.extend(["react.js", "reactjs"])
+        elif skill_lower == "react native":
+            variations.extend(["react-native", "reactnative"])
+        elif skill_lower == "javascript":
+            variations.extend(["js", "ecmascript"])
+        elif skill_lower == "node.js":
+            variations.extend(["nodejs", "node"])
             
+        core_skills[skill_lower] = variations
+    
+    found_skills = set()
+    
+    # Check for each skill and its variations
+    for skill, variations in core_skills.items():
+        for variation in variations:
+            if variation in text:
+                found_skills.add(skill)
+                break
+                
     return list(found_skills)
 
+def normalize_salary(salary_str: str) -> Tuple[float, float]:
+    """Normalize salary string to monthly USD values."""
+    try:
+        # Remove non-numeric characters except digits, dots, and hyphens
+        salary_str = ''.join(c for c in salary_str.lower() if c.isdigit() or c in '.-k')
+        
+        # Handle k notation (e.g. 150k)
+        if 'k' in salary_str:
+            salary_str = salary_str.replace('k', '000')
+        
+        # Split range
+        if '-' in salary_str:
+            min_str, max_str = salary_str.split('-')
+            min_salary = float(min_str)
+            max_salary = float(max_str)
+        else:
+            min_salary = max_salary = float(salary_str)
+            
+        # If values look like yearly salaries (>20000), convert to monthly
+        if min_salary > 20000:
+            min_salary /= 12
+        if max_salary > 20000:
+            max_salary /= 12
+            
+        return min_salary, max_salary
+        
+    except Exception:
+        return 0, float('inf')
+
+def detect_remote(job: Dict) -> bool:
+    """Detect if a job is remote friendly."""
+    remote_indicators = [
+        'remote',
+        'work from home',
+        'wfh',
+        'virtual',
+        'telecommute',
+        'anywhere',
+        'flexible location',
+        'home office',
+        'distributed team'
+    ]
+    
+    # Check explicit remote flag
+    if 'remote' in job:
+        return bool(job['remote'])
+        
+    # Check location field
+    if 'location' in job:
+        location = job['location'].lower()
+        for indicator in remote_indicators:
+            if indicator in location:
+                return True
+                
+    # Check title
+    if 'title' in job:
+        title = job['title'].lower()
+        for indicator in remote_indicators:
+            if indicator in title:
+                return True
+                
+    # Check description
+    if 'description' in job:
+        desc = job['description'].lower()
+        for indicator in remote_indicators:
+            if indicator in desc:
+                return True
+                
+    return False
+
+def extract_email_from_text(text: str) -> str:
+    """Extract email address from text."""
+    if not text:
+        return ''
+        
+    # Handle obfuscated email formats
+    text = text.replace(' [at] ', '@')
+    text = text.replace(' (at) ', '@')
+    text = text.replace('[at]', '@')
+    text = text.replace('(at)', '@')
+    text = text.replace(' [dot] ', '.')
+    text = text.replace(' (dot) ', '.')
+    text = text.replace('[dot]', '.')
+    text = text.replace('(dot)', '.')
+    
+    # Look for email patterns
+    email_pattern = r'[\w\.-]+(?:\s*(?:@|\[at\]|\(at\))\s*[\w\.-]+(?:\s*(?:\.|\[dot\]|\(dot\))\s*[\w\.-]+)+|\w+(?:\s*[.@]\s*|\s+(?:at|dot)\s+)\w+(?:\s*\.\s*\w+)*)'
+    matches = re.findall(email_pattern, text.lower())
+    
+    if matches:
+        # Clean up the found email
+        email = matches[0]
+        email = email.replace(' ', '')
+        email = email.replace('at', '@')
+        email = email.replace('dot', '.')
+        return email
+        
+    return ''
+
 def match_jobs(jobs: List[Dict], profile: Dict) -> List[Dict]:
-    """Match jobs with user profile."""
+    """Match jobs with user profile based on core skills."""
     matched_jobs = []
     
     try:
-        # Get profile criteria
-        required_skills = set(profile.get('skills', []))
-        min_salary = profile.get('salary', {}).get('min', 0)
-        max_salary = profile.get('salary', {}).get('max', float('inf'))
-        preferred_remote = profile.get('preferences', {}).get('remote', True)
+        # Get profile preferences
+        core_skills_config = profile.get('matching', {}).get('core_skills', [
+            "react", "react native", "javascript", "node.js"
+        ])
         
         logger.info("\nStarting job matching process:")
         logger.info("=" * 50)
-        logger.info(f"Required skills: {', '.join(required_skills)}")
-        logger.info(f"Salary range: ${min_salary:,} - {'∞' if max_salary == float('inf') else f'${max_salary:,}'}")
-        logger.info(f"Remote preferred: {preferred_remote}")
+        logger.info(f"Looking for jobs with any of these skills: {', '.join(core_skills_config)}")
+        logger.info("Remote only: True")
         logger.info("-" * 50)
         
         for job in jobs:
             try:
+                # Check if job is remote first - if not, skip it
+                is_remote = detect_remote(job)
+                if not is_remote:
+                    continue
+                
                 # Extract skills from job description and title
                 job_skills = set()
                 
                 # From title
                 if 'title' in job:
-                    title_skills = extract_skills_from_text(job['title'])
+                    title_skills = extract_core_skills_from_text(job['title'], core_skills_config)
                     job_skills.update(title_skills)
                 
                 # From description
                 if 'description' in job:
-                    desc_skills = extract_skills_from_text(job['description'])
+                    desc_skills = extract_core_skills_from_text(job['description'], core_skills_config)
                     job_skills.update(desc_skills)
-                
-                # From requirements
-                if 'requirements' in job and isinstance(job['requirements'], list):
-                    for req in job['requirements']:
-                        req_skills = extract_skills_from_text(req)
-                        job_skills.update(req_skills)
-                
-                # Calculate base match score from skills
-                matched_skills = required_skills & job_skills
-                match_score = len(matched_skills) / len(required_skills) if required_skills else 0
-                
-                # Boost score for remote jobs if preferred
-                is_remote = False
-                if 'remote' in job:
-                    is_remote = job['remote']
-                elif 'location' in job:
-                    is_remote = 'remote' in job['location'].lower()
-                
-                if preferred_remote and is_remote:
-                    match_score *= 1.2  # 20% boost for remote jobs
-                
-                # Check salary if available
-                salary_match = False
-                if 'salary_range' in job and job['salary_range']:
-                    try:
-                        # Try to extract salary from range string
-                        salary_str = job['salary_range'].lower()
-                        salary_str = ''.join(c for c in salary_str if c.isdigit() or c in '.-')
-                        salary_parts = salary_str.split('-')
-                        
-                        if len(salary_parts) == 2:
-                            job_min = float(salary_parts[0])
-                            job_max = float(salary_parts[1])
-                        else:
-                            job_min = job_max = float(salary_parts[0])
-                            
-                        salary_match = (
-                            min_salary <= job_max and
-                            (max_salary == float('inf') or job_min <= max_salary)
-                        )
-                            
-                    except Exception:
-                        pass  # Skip salary matching if parsing fails
-                
-                # Add all jobs with their match information
-                job['match_score'] = round(match_score * 100, 2)
-                job['matched_skills'] = list(matched_skills)
-                job['missing_skills'] = list(required_skills - job_skills)
-                job['salary_match'] = salary_match
-                job['remote_match'] = is_remote == preferred_remote
-                job['application_status'] = 'pending'
-                job['application_method'] = 'direct' if 'apply_url' in job else 'email'
-                matched_jobs.append(job)
-                
-                # Log match details
-                logger.info(f"\nAnalyzing job: {job.get('title', 'Unknown')}")
-                logger.info(f"Match score: {job['match_score']}%")
-                logger.info(f"Matched skills: {', '.join(matched_skills)}")
-                logger.info(f"Missing skills: {', '.join(job['missing_skills'])}")
-                logger.info(f"Remote match: {job['remote_match']}")
-                logger.info(f"Salary match: {salary_match}")
-                logger.info(f"Application method: {job['application_method']}")
-                logger.info("-" * 50)
                     
+                    # Extract email from description
+                    if 'email' not in job or not job['email']:
+                        job['email'] = extract_email_from_text(job['description'])
+                
+                # Calculate match score based on skills
+                if job_skills:
+                    # Base score is percentage of core skills found
+                    score = len(job_skills) / len(core_skills_config)
+                    
+                    # Store match details
+                    job['match_score'] = score * 100  # Convert to percentage
+                    job['found_skills'] = list(job_skills)
+                    job['remote'] = is_remote
+                    
+                    # Log job details
+                    logger.info("\nAnalyzing job: {}".format(job.get('title', 'Unknown')))
+                    logger.info("Match score: {:.1f}%".format(job['match_score']))
+                    logger.info("Found skills: {}".format(', '.join(job['found_skills'])))
+                    logger.info("Remote match: {}".format(job['remote']))
+                    
+                    # Add salary info if available
+                    if 'salary' in job:
+                        min_salary, max_salary = normalize_salary(job['salary'])
+                        job['salary_min'] = min_salary
+                        job['salary_max'] = max_salary
+                        logger.info("Salary match: {}".format(bool(min_salary)))
+                    else:
+                        logger.info("Salary match: False")
+                    
+                    # Determine application method
+                    if job.get('email'):
+                        job['application_method'] = 'email'
+                    elif 'linkedin.com' in job.get('url', '').lower():
+                        job['application_method'] = 'linkedin'
+                    else:
+                        job['application_method'] = 'unknown'
+                    logger.info("Application method: {}".format(job['application_method']))
+                    
+                    logger.info("-" * 50)
+                    
+                    # Add to matched jobs if score is high enough
+                    if score >= 0.3:  # 30% match threshold
+                        matched_jobs.append(job)
+                        
             except Exception as e:
-                logger.error(f"Error matching job {job.get('title', 'Unknown')}: {str(e)}")
+                logger.error(f"Error processing job: {str(e)}")
                 continue
                 
-        # Sort by match score
-        matched_jobs.sort(key=lambda x: x['match_score'], reverse=True)
-        
-        # Log summary
-        logger.info("\nMatching Summary:")
-        logger.info("=" * 50)
-        logger.info(f"Total jobs processed: {len(jobs)}")
-        logger.info(f"Jobs matched: {len(matched_jobs)}")
-        
-        score_ranges = {
-            "Excellent (80-100%)": 0,
-            "Good (60-79%)": 0,
-            "Fair (40-59%)": 0,
-            "Poor (0-39%)": 0
-        }
-        
-        for job in matched_jobs:
-            if job['match_score'] >= 80:
-                score_ranges["Excellent (80-100%)"] += 1
-            elif job['match_score'] >= 60:
-                score_ranges["Good (60-79%)"] += 1
-            elif job['match_score'] >= 40:
-                score_ranges["Fair (40-59%)"] += 1
-            else:
-                score_ranges["Poor (0-39%)"] += 1
-                
-        for range_name, count in score_ranges.items():
-            logger.info(f"{range_name}: {count} jobs")
-        
+        logger.info(f"\nFound {len(matched_jobs)} matching jobs")
         return matched_jobs
         
     except Exception as e:
@@ -258,9 +324,7 @@ def save_matches(matched_jobs: List[Dict], output_dir: str):
             if job.get('salary_range'):
                 report.append(f"Salary Range: {job['salary_range']}")
             report.append(f"Remote: {'Yes' if job.get('remote') else 'No'}")
-            report.append(f"Matched Skills: {', '.join(job['matched_skills'])}")
-            if job['missing_skills']:
-                report.append(f"Missing Skills: {', '.join(job['missing_skills'])}")
+            report.append(f"Matched Skills: {', '.join(job['found_skills'])}")
             report.append(f"Application Method: {job['application_method']}")
             report.append(f"URL: {job['url']}\n")
             

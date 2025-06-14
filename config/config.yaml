@@ -2,174 +2,93 @@
 
 # Resume Configuration
 resume:
-  path: "data/resumes/resume.pdf"  # Path to your resume PDF
-  cache_dir: "data/cache"  # Directory to cache parsed resume data
-  update_interval: 86400   # How often to re-parse resume (in seconds)
-  skills: []  # Your key skills
-  experience_years: 5  # Your years of experience
-  current_role: "Software Engineer"  # Your current role
-  education: "Bachelor's in Computer Science"  # Your education
-  first_name: "Felipe"  # Your first name
-  last_name: "Nogueira"  # Your last name
+  path: "data/resumes/resume.pdf"
+  cache_dir: "data/cache"
+  update_interval: 86400
 
-# Job Search Configuration
-job_search:
-  platforms:
-    linkedin:
-      enabled: true
-      search_interval: 3600  # How often to search (in seconds)
-      keywords: ["software engineer", "python", "backend", "react", "javascript", "frontend", "fullstack"]  # Your search keywords
-      locations: ["Remote", "São Paulo"]  # Your preferred locations
-      remote_only: true
-      
-    indeed:
-      enabled: true
-      search_interval: 3600
-      keywords: ["software engineer", "python", "backend", "react", "javascript", "frontend", "fullstack"]
-      locations: ["Remote", "São Paulo"]
-      remote_only: true
-      
-    remotive:
-      enabled: true
-      search_interval: 3600
-      keywords: ["software engineer", "python", "backend", "react", "javascript", "frontend", "fullstack"]
-      
-    weworkremotely:
-      enabled: true
-      search_interval: 3600
-      keywords: ["software engineer", "python", "backend", "react", "javascript", "frontend", "fullstack"]
-      
-    greenhouse:
-      enabled: true
-      search_interval: 3600
-      keywords: ["software engineer", "python", "backend", "react", "javascript", "frontend", "fullstack"]
+# Email Configuration
+email:
+  enabled: true
+  from_name: "Felipe França Nogueira"
+  from_email: "felipefrancanogueira@gmail.com"
+  smtp_host: "smtp.gmail.com"
+  smtp_port: 587
+  smtp_username: "felipefrancanogueira@gmail.com"
+  smtp_password: "your-app-specific-password"  # Replace with your Gmail App Password
+  signature_path: "templates/email_signature.txt"
 
-  # Job matching configuration
-  matching:
-    min_score: 0.3  # Minimum match score (0-1)
-    required_skills: ["python", "git", "react", "javascript", "frontend", "fullstack"]  # Skills that must be present
-    preferred_skills: ["aws", "docker", "kubernetes"]  # Skills that are preferred but not required
-    excluded_keywords: ["lead", "manager"]  # Keywords to exclude from matches
-    max_applications_per_day: 100
-    salary_range:
-      min: 18000  # Minimum monthly salary in BRL
-      max: 55000  # Maximum monthly salary in BRL
-    experience_range:
-      min: 4  # Minimum years of experience
-      max: 9  # Maximum years of experience
+# LinkedIn Configuration
+linkedin:
+  enabled: true
+  email: "your-linkedin-email"  # Replace with your LinkedIn email
+  password: "your-linkedin-password"  # Replace with your LinkedIn password
+  feed_search:
+    max_posts: 100
+    days_back: 7
+    scroll_delay: 2
+    keywords:
+      - "software engineer"
+      - "developer"
+      - "full stack"
+      - "backend"
+      - "frontend"
+      - "react"
+      - "node.js"
+      - "python"
+  job_search:
+    locations:
+      - "Worldwide"
+      - "Remote"
+      - "United States"
+      - "Canada"
+      - "Europe"
+    experience_levels:
+      - "Entry Level"
+      - "Associate"
+      - "Mid-Senior Level"
+      - "Senior"
+    job_types:
+      - "Full-time"
+      - "Contract"
+      - "Remote"
 
-# Application Configuration
-application:
-  cover_letter:
-    enabled: true
-    template: "templates/cover_letter.txt"
-    customize: true  # Whether to customize for each job
-    
-  email:
-    enabled: true
-    from_name: "Felipe Nogueira"
-    from_email: "felipefrancanogueira@gmail.com"
-    smtp_host: "smtp.gmail.com"
-    smtp_port: 587
-    smtp_username: "felipefrancanogueira@gmail.com"
-    smtp_password: "blys kjpv akel psfx"
-    signature_path: "templates/email_signature.txt"  # Updated to match the new EmailSender
-
-  delay_between_apps: 30  # Delay in seconds between applications
-  max_daily_apps: 50  # Maximum number of applications per day
-  working_hours:  # Time window for sending applications (24h format)
-    start: 7  # 9 AM
-    end: 20   # 5 PM
-
-# OAuth Configuration
-oauth:
-  linkedin:
-    client_id: ""
-    client_secret: ""
-    redirect_uri: ""
-    
-  indeed:
-    client_id: ""
-    client_secret: ""
-    redirect_uri: ""
-    
-  remotive:
-    client_id: ""
-    client_secret: ""
-    redirect_uri: ""
-    
-  weworkremotely:
-    client_id: ""
-    client_secret: ""
-    redirect_uri: ""
-    
-  greenhouse:
-    client_id: ""
-    client_secret: ""
-    redirect_uri: ""
-
-# API Configuration
-api:
-  groq:
-    api_key: ""  # Your Groq API key for email/cover letter generation
-    model: "mixtral-8x7b-32768"  # Model to use
-    temperature: 0.7  # Temperature for generation
-    max_tokens: 1000  # Maximum tokens for generation
+# Storage Configuration
+storage:
+  applications_db: "data/applications.db"
+  cover_letters_dir: "data/cover_letters"
+  attachments_dir: "data/attachments"
 
 # Logging Configuration
 logging:
   level: "INFO"
   file: "logs/autoapply.log"
-  max_size: 10  # MB
+  max_size: 10485760
   backup_count: 5
-  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 
-# Storage Configuration
-storage:
-  applications_dir: "data/applications"  # Directory for application logs and reports
-  matches_dir: "data/matches"  # Directory for matched jobs
-  analysis_dir: "data/analysis"  # Directory for job analysis reports
-  templates_dir: "templates"  # Directory for email and cover letter templates
-  applications_db: "data/applications.db"  # SQLite database for tracking applications
-  cover_letters_dir: "data/cover_letters"  # Directory to store generated cover letters
-  attachments_dir: "data/attachments"      # Directory for resume and other attachments
-  resumes_dir: "data/resumes"             # Directory for storing resumes
-  cache_dir: "data/cache"                 # Directory for caching
-  jobs_dir: "data/jobs"                   # Directory for job data
-  raw_jobs_dir: "data/jobs/raw"          # Directory for raw job listings
-  processed_jobs_dir: "data/jobs/processed" # Directory for processed job listings
-
-# Browser settings for web applications
-browser:
-  headless: false  # Run browser in visible mode for debugging
-  timeout: 30  # Timeout in seconds for page loads
-  user_agent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
-
-# Proxy settings (optional)
-proxy:
-  enabled: false
-  host: ""
-  port: 0
-  username: ""
-  password: ""
-
-# Rate limiting
-rate_limits:
-  linkedin:
-    requests_per_hour: 100
-    pause_after_error: 300  # Seconds to wait after an error
-  indeed:
-    requests_per_hour: 100
-    pause_after_error: 300
-  remotive:
-    requests_per_hour: 100
-    pause_after_error: 300
-  weworkremotely:
-    requests_per_hour: 100
-    pause_after_error: 300
-  github:
-    requests_per_hour: 60
-    pause_after_error: 300
-  glassdoor:
-    requests_per_hour: 100
-    pause_after_error: 300 
+# Job Search Configuration
+job_search:
+  platforms:
+    - linkedin_feed
+    - linkedin_jobs
+    - hackernews
+    - github_jobs
+  required_skills:
+    - javascript
+    - react
+    - node.js
+  preferred_skills:
+    - typescript
+    - python
+    - aws
+  min_salary: 100000  # USD per year
+  remote_only: true
+  locations:
+    - "Remote"
+    - "Worldwide"
+    - "United States"
+    - "Canada"
+  excluded_terms:
+    - "senior staff"
+    - "principal"
+    - "director"
+    - "manager"

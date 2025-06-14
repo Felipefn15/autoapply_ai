@@ -62,15 +62,24 @@ class EmailSender:
                     else:
                         logger.warning(f"Attachment not found: {file_path}")
             
-            # Send email
-            await aiosmtplib.send(
-                message=msg.as_string(),
+            # Create SMTP client and use STARTTLS
+            smtp = aiosmtplib.SMTP(
                 hostname=self.host,
                 port=self.port,
-                username=self.username,
-                password=self.password,
-                use_tls=True
+                use_tls=False,  # Don't use SSL from start
+                start_tls=True  # Use STARTTLS instead
             )
+            
+            # Connect and login
+            await smtp.connect()
+            await smtp.starttls()  # Start TLS before login
+            await smtp.login(self.username, self.password)
+            
+            # Send email
+            await smtp.send_message(msg)
+            
+            # Close connection
+            await smtp.quit()
             
             logger.info(f"Email sent to {to_email}")
             return True
@@ -123,6 +132,16 @@ class EmailSender:
         """Extract email address from text."""
         if not text:
             return None
+            
+        # Handle obfuscated email formats
+        text = text.replace(' [at] ', '@')
+        text = text.replace(' (at) ', '@')
+        text = text.replace('[at]', '@')
+        text = text.replace('(at)', '@')
+        text = text.replace(' [dot] ', '.')
+        text = text.replace(' (dot) ', '.')
+        text = text.replace('[dot]', '.')
+        text = text.replace('(dot)', '.')
             
         email_pattern = r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'
         match = re.search(email_pattern, text)

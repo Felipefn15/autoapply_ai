@@ -6,6 +6,7 @@ import os
 import sys
 import asyncio
 import subprocess
+import json
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -16,6 +17,11 @@ from loguru import logger
 def load_config(config_path: str = "config/config.yaml") -> Dict:
     """Load configuration from YAML file."""
     try:
+        config_path = Path(config_path)
+        if not config_path.is_file():
+            logger.error(f"Configuration file not found: {config_path}")
+            return {}
+            
         with open(config_path, 'r') as f:
             config = yaml.safe_load(f)
         logger.info("Loaded configuration")
@@ -39,15 +45,22 @@ async def run_script(script_name: str, config_path: str = "config/config.yaml",
         # Build command with arguments
         cmd = ["python", f"scripts/{script_name}.py"]
         
-        # Add common arguments
-        cmd.extend(["--config", config_path])
-        
-        # Add script-specific arguments
-        if script_name in ["match_jobs", "apply_jobs"]:
+        # Add script-specific arguments based on script name
+        if script_name == "match_jobs":
+            cmd.extend(["--profile", "config/profile.yaml"])
+            cmd.extend(["--jobs-dir", "data/jobs"])
+            cmd.extend(["--output-dir", matches_dir])
+        elif script_name == "apply_jobs":
             cmd.extend(["--matches-dir", matches_dir])
-            
-        if script_name == "apply_jobs":
             cmd.extend(["--resume", resume_path])
+        elif script_name == "search_jobs":
+            cmd.extend(["--config", config_path])
+            cmd.extend(["--output-dir", "data/jobs"])
+        elif script_name == "analyze_jobs":
+            cmd.extend(["--jobs-dir", "data/jobs"])
+            cmd.extend(["--applications-dir", "data/applications"])
+            cmd.extend(["--output-dir", "data/analysis"])
+            cmd.extend(["--visualizations-dir", "data/analysis/visualizations"])
             
         # Run script and capture output
         process = subprocess.run(

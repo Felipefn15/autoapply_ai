@@ -97,7 +97,11 @@ def print_job_summary(jobs: List[JobPosting]):
         print(f"\n{i}. {job.title}")
         print(f"   URL: {job.url}")
         if job.email:
-            print(f"   Contact: {job.email}")
+            print(f"   Primary Contact: {job.email}")
+        if job.extracted_emails:
+            other_emails = [e for e in job.extracted_emails if e != job.email]
+            if other_emails:
+                print(f"   Additional Contacts: {', '.join(other_emails)}")
         print("-" * 80)
 
 async def main():

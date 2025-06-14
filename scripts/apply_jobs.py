@@ -21,44 +21,93 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
-from app.automation import BaseApplicator, LinkedInApplicator, EmailApplicator
+from app.automation.applicator_manager import ApplicatorManager
 from app.automation.application_logger import ApplicationLogger
+from app.db.database import Database
+from app.utils.text_extractor import extract_emails_from_text
 
-def load_config(config_path: str) -> Dict:
-    """
-    Load configuration from YAML file.
-    
-    Args:
-        config_path: Path to config file
-        
-    Returns:
-        Configuration dictionary
-    """
-    try:
-        with open(config_path, 'r') as f:
-            config = yaml.safe_load(f)
-            logger.info("Loaded configuration")
-            return config
-    except Exception as e:
-        logger.error(f"Error loading configuration: {str(e)}")
-        raise
+import sys
 
-def load_matches(matches_dir: str) -> List[Dict]:
-    """Load matched jobs from JSON files."""
-    matches = []
-    matches_dir = Path(matches_dir)
-    
+# Add parent directory to path
+sys.path.append(str(Path(__file__).parent.parent))
+
+def load_config() -> dict:
+    """Load configuration from file."""
     try:
-        # Get most recent matches file
-        latest_matches = sorted(matches_dir.glob("matches_*.json"))[-1]
-        with open(latest_matches, "r") as f:
-            matches = json.load(f)
+        config_path = Path('config/config.yaml')
+        if not config_path.exists():
+            # Create default config
+            config = {
+                'resume_path': 'resume.pdf',
+                'resume': {
+                    'first_name': 'Your',
+                    'last_name': 'Name',
+                    'email': 'your.email@gmail.com',
+                    'phone': '+1 (555) 123-4567',
+                    'experience_years': 5,
+                    'skills': [
+                        'Python',
+                        'JavaScript',
+                        'React',
+                        'Node.js',
+                        'AWS'
+                    ],
+                    'desired_salary': '120000',
+                    'willing_to_relocate': True,
+                    'willing_to_travel': True
+                },
+                'email': {
+                    'smtp_server': 'smtp.gmail.com',
+                    'smtp_port': 587,
+                    'username': 'your.email@gmail.com',
+                    'password': 'your-app-specific-password'
+                },
+                'linkedin': {
+                    'username': 'your.email@gmail.com',
+                    'password': 'your-linkedin-password'
+                }
+            }
             
-        logger.info(f"Loaded {len(matches)} matches from {latest_matches}")
-        return matches
-        
+            # Create config directory
+            config_path.parent.mkdir(exist_ok=True)
+            
+            # Save default config
+            with open(config_path, 'w') as f:
+                yaml.dump(config, f, default_flow_style=False)
+                
+            logger.warning(f"Created default config at {config_path}. Please update it with your credentials.")
+            return config
+            
+        # Load existing config
+        with open(config_path) as f:
+            return yaml.safe_load(f)
+            
     except Exception as e:
-        logger.error(f"Error loading matches: {str(e)}")
+        logger.error(f"Error loading config: {str(e)}")
+        return {}
+
+async def load_matches(matches_dir: str) -> List[Dict]:
+    """Load matched jobs from the most recent matches file."""
+    matches_path = Path(matches_dir)
+    if not matches_path.exists():
+        logger.error(f"Matches directory not found: {matches_dir}")
+        return []
+        
+    # Find most recent matches file
+    matches_files = list(matches_path.glob("matches_*.json"))
+    if not matches_files:
+        logger.error(f"No matches files found in {matches_dir}")
+        return []
+        
+    latest_file = max(matches_files, key=lambda f: f.stat().st_mtime)
+    
+    try:
+        with open(latest_file) as f:
+            matches = json.load(f)
+        logger.info(f"Loaded {len(matches)} matches from {latest_file}")
+        return matches
+    except Exception as e:
+        logger.error(f"Failed to load matches: {e}")
         return []
 
 def load_resume(resume_path: str) -> str:
@@ -128,17 +177,45 @@ def save_results(results: List[Dict], output_dir: str):
         logger.error(f"Error saving results: {str(e)}")
         raise
 
+def extract_application_info(job: Dict) -> Dict:
+    """Extract application information from job posting."""
+    # Extract emails
+    emails = extract_emails_from_text(job.get("description", ""))
+    
+    # Extract application method
+    method = job.get("application_method", "unknown")
+    if emails:
+        method = "email"
+    elif "linkedin.com" in job.get("url", "").lower():
+        method = "linkedin"
+    elif any(phrase in job.get("description", "").lower() for phrase in [
+        "apply on our website",
+        "apply through our website",
+        "apply at our website",
+        "apply here:",
+        "apply at:"
+    ]):
+        method = "website"
+        
+    return {
+        "emails": emails,
+        "method": method,
+        "url": job.get("url"),
+        "platform": job.get("platform", "unknown")
+    }
+
 async def apply_to_jobs(matches: List[Dict], config: Dict, resume_path: str) -> None:
     """Apply to matched jobs."""
     if not matches:
         logger.warning("No matches to apply to")
         return
         
-    # Initialize applicators
-    applicators = [
-        LinkedInApplicator(config),
-        EmailApplicator(config)
-    ]
+    # Initialize database
+    db = Database()
+    
+    # Initialize applicator manager
+    manager = ApplicatorManager(config)
+    await manager.setup()
     
     # Initialize logger
     app_logger = ApplicationLogger()
@@ -147,33 +224,64 @@ async def apply_to_jobs(matches: List[Dict], config: Dict, resume_path: str) -> 
     logger.info("=" * 50)
     logger.info(f"Processing {len(matches)} matches...")
     
-    for job in matches:
-        logger.info(f"\nProcessing job: {job.get('title', 'Unknown')} at {job.get('company', 'Unknown')}")
-        
-        # Try each applicator
-        applied = False
-        for applicator in applicators:
-            try:
-                if await applicator.is_applicable(job.get('url', '')):
-                    # Try to apply
-                    result = await applicator.apply(job, {"resume_path": resume_path})
-                    applied = result.status == "success"
-                    if applied:
-                        break
-                        
-            except Exception as e:
-                logger.error(f"Error with {applicator.__class__.__name__}: {str(e)}")
+    try:
+        # First, add all matches to the database as pending applications
+        for job in matches:
+            # Skip if already in database
+            if db.get_application_by_url(job["url"]):
                 continue
                 
-        if not applied:
-            logger.warning("No suitable applicator found or all attempts failed")
-            app_logger.log_application(
-                job=job,
-                status="failed",
-                method="unknown",
-                error="No suitable applicator found or all attempts failed"
-            )
-    
+            # Extract application info
+            app_info = extract_application_info(job)
+            
+            # Add job to database
+            db.add_application({
+                "title": job["title"],
+                "company": job["company"],
+                "location": job["location"],
+                "description": job["description"],
+                "url": job["url"],
+                "platform": app_info["platform"],
+                "application_method": app_info["method"],
+                "emails": app_info["emails"],
+                "status": "pending",
+                "created_at": datetime.now().isoformat(),
+                "updated_at": datetime.now().isoformat()
+            })
+            
+        # Now process pending applications
+        pending = db.get_pending_applications()
+        logger.info(f"Found {len(pending)} pending applications")
+        
+        for job in pending:
+            logger.info(f"\nProcessing job: {job['title']}")
+            logger.info("=" * 50)
+            
+            try:
+                # Apply to job
+                result = await manager.apply_to_job(job, resume_path)
+                
+                # Log result
+                app_logger.log_application_attempt(job, result)
+                
+                # Update database
+                if result["success"]:
+                    db.update_application_status(job["url"], "applied")
+                else:
+                    db.update_application_status(job["url"], "failed", 
+                                              error=result.get("error"))
+                    
+            except Exception as e:
+                logger.error(f"Failed to apply to job: {e}")
+                db.update_application_status(job["url"], "failed", 
+                                          error=str(e))
+                
+            # Sleep between applications
+            await asyncio.sleep(2)
+            
+    finally:
+        await manager.cleanup()
+
     # Show final summary
     summary = app_logger.get_summary()
     
@@ -183,12 +291,25 @@ async def apply_to_jobs(matches: List[Dict], config: Dict, resume_path: str) -> 
     logger.info(f"Successfully applied: {summary['successful']}")
     logger.info(f"Failed applications: {summary['failed']}")
     logger.info(f"Skipped applications: {summary['skipped']}")
-    logger.info(f"Success rate: {summary['success_rate']:.1f}%")
+    logger.info(f"Success rate: {summary['success_rate']}%")
     
-    # Indicate where to find detailed logs
-    logger.info("\nDetailed logs saved to:")
-    logger.info(f"- JSON: data/applications/applications_{app_logger.current_session}.json")
-    logger.info(f"- Report: data/applications/applications_report_{app_logger.current_session}.txt")
+    # Save logs
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    log_dir = Path("data/applications")
+    log_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Save JSON log
+    json_path = log_dir / f"applications_{timestamp}.json"
+    with open(json_path, 'w') as f:
+        json.dump(app_logger.get_logs(), f, indent=2)
+    logger.info(f"\nDetailed logs saved to:")
+    logger.info(f"- JSON: {json_path}")
+    
+    # Save report
+    report_path = log_dir / f"applications_report_{timestamp}.txt"
+    with open(report_path, 'w') as f:
+        f.write(app_logger.get_report())
+    logger.info(f"- Report: {report_path}")
 
 def generate_cover_letter(job: Dict, profile: Dict) -> str:
     """Generate a cover letter for the job."""
@@ -360,44 +481,107 @@ def apply_for_jobs(jobs: List[Dict], profile: Dict, config: Dict) -> List[Dict]:
         logger.error(f"Error in apply_for_jobs: {str(e)}")
         raise
 
-async def main():
-    """Main function."""
-    parser = argparse.ArgumentParser(description="Apply to matched jobs")
-    
-    parser.add_argument(
-        "--config",
-        help="Configuration file",
-        default="config/config.yaml"
-    )
-    
-    parser.add_argument(
-        "--resume",
-        help="Resume file path",
-        required=True
-    )
-    
-    parser.add_argument(
-        "--matches-dir",
-        help="Directory containing job matches",
-        default="data/matches"
-    )
-    
+async def run_script():
+    """Run the script."""
+    try:
+        logger.info("Starting job application process")
+        logger.info("=" * 50)
+        
+        # Load configuration
+        logger.info("Loading configuration...")
+        config = load_config()
+        
+        # Initialize database
+        logger.info("Connecting to database...")
+        db = Database()
+        
+        # Get pending applications
+        logger.info("Fetching pending applications...")
+        pending_jobs = db.get_pending_applications()
+        logger.info(f"Found {len(pending_jobs)} pending applications")
+        
+        if not pending_jobs:
+            logger.warning("No pending applications found. Exiting...")
+            return
+            
+        # Initialize applicator manager
+        logger.info("Initializing applicator manager...")
+        manager = ApplicatorManager(config)
+        
+        # Process each job
+        for i, job in enumerate(pending_jobs, 1):
+            try:
+                logger.info("\nProcessing application {}/{}: {}".format(
+                    i, len(pending_jobs), job.get('title', 'Unknown Position')
+                ))
+                logger.info(f"Company: {job.get('company', 'Unknown Company')}")
+                logger.info(f"URL: {job.get('url', 'No URL')}")
+                logger.info(f"Application method: {job.get('application_method', 'unknown')}")
+                logger.info("-" * 50)
+                
+                # Apply for job
+                logger.info("Starting application process...")
+                result = await manager.apply(job)
+                
+                # Update database
+                if result.status == 'success':
+                    logger.success("✅ Application successful!")
+                    db.mark_as_applied(job['id'])
+                else:
+                    logger.error(f"❌ Application failed: {result.error}")
+                    db.mark_as_failed(job['id'], result.error)
+                
+                logger.info("=" * 50)
+                
+            except Exception as e:
+                logger.error(f"Error processing job {job.get('id')}: {str(e)}")
+                db.mark_as_failed(job['id'], str(e))
+                continue
+                
+        logger.success("\nApplication process completed!")
+        logger.info("Summary:")
+        logger.info(f"Total jobs processed: {len(pending_jobs)}")
+        
+    except Exception as e:
+        logger.error(f"Error running script: {str(e)}")
+        raise
+        
+    finally:
+        # Clean up resources
+        if 'manager' in locals():
+            await manager.cleanup()
+
+def main():
+    """Main entry point."""
+    parser = argparse.ArgumentParser(description='Apply to matched jobs')
+    parser.add_argument('--config', default='config/config.yaml', help='Path to config file')
+    parser.add_argument('--matches-dir', default='data/matches', help='Directory containing match files')
+    parser.add_argument('--resume', required=True, help='Path to resume PDF')
     args = parser.parse_args()
     
     try:
-        # Load matches
-        matches = load_matches(args.matches_dir)
-        if not matches:
+        # Load config
+        config = load_config()
+        
+        # Load most recent matches file
+        matches_dir = Path(args.matches_dir)
+        match_files = sorted(matches_dir.glob('matches_*.json'))
+        if not match_files:
+            logger.error("No match files found")
             return
             
-        # Apply to jobs
-        await apply_to_jobs(matches, {}, args.resume)
+        with open(match_files[-1], 'r') as f:
+            matches = json.load(f)
+            
+        # Update resume path in config
+        config['resume_path'] = args.resume
         
-    except KeyboardInterrupt:
-        logger.info("Application process stopped by user")
+        # Run application process
+        asyncio.run(apply_to_jobs(matches, config, args.resume))
+        
     except Exception as e:
         logger.error(f"Error: {str(e)}")
         raise
 
-if __name__ == "__main__":
-    asyncio.run(main()) 
+if __name__ == '__main__':
+    asyncio.run(run_script()) 
