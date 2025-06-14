@@ -54,3 +54,4 @@ htmlcov/
 pip-log.txt
 pip-delete-this-directory.txt
 
+config/config.yaml
