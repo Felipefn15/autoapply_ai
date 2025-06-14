@@ -9,7 +9,7 @@ application:
     provider: sendgrid
     resume_path: data/resumes/resume.pdf
     sendgrid:
-      api_key: 
+      api_key: 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
       from_email: felipefrancanogueira@gmail.com
       from_name: "Felipe Fran\xE7a Nogueira"
     signature_path: templates/email_signature.txt
