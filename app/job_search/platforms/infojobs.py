@@ -72,33 +72,34 @@ class InfoJobsScraper:
         jobs = []
         
         try:
-            # InfoJobs uses different URL structure
-            if category == "tecnologia-da-informacao":
-                url = f"{self.base_url}/vagas-de-emprego/tecnologia-da-informacao"
-            elif category == "desenvolvimento-de-software":
-                url = f"{self.base_url}/vagas-de-emprego/desenvolvimento"
-            elif category == "engenharia-de-software":
-                url = f"{self.base_url}/vagas-de-emprego/engenharia"
-            else:
-                url = f"{self.base_url}/vagas-de-emprego/{category}"
-                
-            logger.info(f"Scraping category: {url}")
+            # InfoJobs uses different URL structure - try multiple approaches
+            urls_to_try = [
+                f"{self.base_url}/vagas-de-emprego/tecnologia-da-informacao",
+                f"{self.base_url}/vagas-de-emprego/desenvolvimento",
+                f"{self.base_url}/vagas-de-emprego/engenharia",
+                f"{self.base_url}/vagas-de-emprego",
+                f"{self.base_url}/vagas",
+                f"{self.base_url}/empregos"
+            ]
             
-            async with session.get(url) as response:
-                if response.status != 200:
-                    logger.warning(f"Failed to fetch {url}, status: {response.status}")
-                    # Try alternative URL structure
-                    alt_url = f"{self.base_url}/vagas-de-emprego"
-                    logger.info(f"Trying alternative URL: {alt_url}")
-                    
-                    async with session.get(alt_url) as alt_response:
-                        if alt_response.status != 200:
-                            logger.warning(f"Alternative URL also failed, status: {alt_response.status}")
-                            return jobs
-                        
-                        html = await alt_response.text()
-                else:
-                    html = await response.text()
+            html = None
+            for url in urls_to_try:
+                logger.info(f"Trying URL: {url}")
+                try:
+                    async with session.get(url, timeout=10) as response:
+                        if response.status == 200:
+                            html = await response.text()
+                            logger.info(f"Successfully fetched: {url}")
+                            break
+                        else:
+                            logger.warning(f"Failed to fetch {url}, status: {response.status}")
+                except Exception as e:
+                    logger.warning(f"Error fetching {url}: {str(e)}")
+                    continue
+            
+            if not html:
+                logger.warning("All InfoJobs URLs failed")
+                return jobs
                 
                 soup = BeautifulSoup(html, 'html.parser')
                 

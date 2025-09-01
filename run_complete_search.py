@@ -32,7 +32,7 @@ async def run_complete_search():
         
         # 2. Inicializar logger de aplicações
         logger.info("📊 2. Inicializando sistema de logging...")
-        app_logger = ApplicationLogger("data/logs")
+        app_logger = ApplicationLogger()
         session_id = app_logger.start_session()
         logger.info(f"   ✅ Sessão iniciada: {session_id}")
         
@@ -139,13 +139,10 @@ async def run_complete_search():
             
             # Log da tentativa de aplicação
             app_logger.log_job_application(
-                job_title=job_data['title'],
-                company=job_data['company'],
-                platform=job_data['platform'],
-                job_url=job_data['url'],
-                application_method="website",
+                job_data=job_data,
                 status=ApplicationStatus.APPLIED,
-                match_score=score
+                match_score=score,
+                platform=job_data['platform']
             )
             
             logger.info("   ✅ Aplicação simulada com sucesso")
