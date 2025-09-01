@@ -1,127 +1,269 @@
-# AutoApply.AI 🤖
+# AutoApply.AI - Sistema de Aplicação Automática para Vagas
 
-Sistema automatizado de busca e candidatura para vagas de tecnologia.
+Sistema completo para busca, matching e aplicação automática de vagas com geração de logs CSV detalhados.
 
-## 🎯 Funcionalidades
+## 🚀 Funcionalidades
 
-- **Busca de Vagas**: Busca automática em múltiplas plataformas (LinkedIn, Indeed, etc.)
-- **Match com Perfil**: Análise de compatibilidade com seu perfil profissional
-- **Candidatura Automática**: Aplicação automática via plataforma ou email
-- **Análise de Resultados**: Relatórios detalhados das candidaturas
+- **Busca Automática**: Busca vagas em múltiplas plataformas (LinkedIn, WeWorkRemotely, Remotive, etc.)
+- **Matching Inteligente**: Compara vagas com seu perfil usando algoritmos de matching
+- **Aplicação Automática**: Aplica automaticamente para vagas com melhor match
+- **Logging Completo**: Gera logs CSV detalhados de todas as operações
+- **Relatórios**: Cria relatórios de performance e analytics
 
-## 📁 Estrutura do Projeto
+## 📋 Pré-requisitos
 
+- Python 3.8+
+- pip
+- Virtual environment (recomendado)
+
+## 🛠️ Instalação
+
+1. **Clone o repositório:**
+```bash
+git clone <repository-url>
+cd autoapply_ai
 ```
-autoapply_ai/
-├── app/                    # Código principal
-│   ├── automation/        # Automação de candidaturas
-│   ├── job_search/       # Busca de vagas
-│   └── main.py          # Script principal
-├── config/               # Configurações
-│   └── config.yaml      # Arquivo de configuração
-├── data/                # Dados e resultados
-│   ├── applications/    # Logs de candidaturas
-│   ├── matches/         # Vagas compatíveis
-│   ├── analysis/        # Relatórios de análise
-│   └── resumes/        # Seu currículo
-├── scripts/             # Scripts de execução
-│   ├── search_jobs.py   # Busca de vagas
-│   ├── match_jobs.py    # Match de perfil
-│   ├── apply_jobs.py    # Candidaturas
-│   └── analyze_jobs.py  # Análise
-├── templates/           # Templates
-│   ├── cover_letter.txt # Carta de apresentação
-│   └── email_signature.txt # Assinatura de email
-├── requirements.txt     # Dependências
-└── README.md           # Este arquivo
+
+2. **Crie e ative o ambiente virtual:**
+```bash
+python3 -m venv venv
+source venv/bin/activate  # Linux/Mac
+# ou
+venv\Scripts\activate  # Windows
+```
+
+3. **Instale as dependências:**
+```bash
+pip install -r requirements.txt
+```
+
+## ⚙️ Configuração
+
+1. **Configure o arquivo `config/config.yaml`:**
+```yaml
+personal:
+  name: "Seu Nome"
+  email: "seu@email.com"
+  skills:
+    - "python"
+    - "react"
+    - "javascript"
+    - "node.js"
+  
+search:
+  keywords:
+    - "software engineer"
+    - "developer"
+    - "python"
+    - "react"
+  
+application:
+  max_applications_per_session: 5
+  delay_between_applications: 1
+```
+
+2. **Configure o arquivo `config/profile.yaml`:**
+```yaml
+personal_info:
+  name: "Seu Nome"
+  email: "seu@email.com"
+  phone: "+55 11 99999-9999"
+  location: "São Paulo, SP"
+  
+experience:
+  years: 5
+  skills:
+    - "Python"
+    - "React"
+    - "JavaScript"
+    - "Node.js"
+    - "Docker"
+    - "AWS"
+  
+education:
+  degree: "Bacharel em Ciência da Computação"
+  institution: "Universidade XYZ"
+  
+languages:
+  - "Português (Nativo)"
+  - "Inglês (Fluente)"
+  - "Espanhol (Intermediário)"
 ```
 
 ## 🚀 Como Usar
 
-1. **Preparação**:
+### Execução Simples
+
+Para executar o sistema completo com uma única linha de comando:
+
 ```bash
-# Clone o repositório
-git clone https://github.com/seu-usuario/autoapply_ai.git
-cd autoapply_ai
-
-# Crie e ative o ambiente virtual
-python -m venv venv
-source venv/bin/activate  # Linux/Mac
-# ou
-.\venv\Scripts\activate  # Windows
-
-# Instale as dependências
-pip install -r requirements.txt
+source venv/bin/activate && PYTHONPATH=. python3 autoapply.py
 ```
 
-2. **Configuração**:
-- Coloque seu currículo em `data/resumes/resume.pdf`
-- Configure suas preferências em `config/config.yaml`:
-  - Palavras-chave de busca
-  - Habilidades requeridas
-  - Faixa salarial
-  - Configurações de email
-  - etc.
+### Execução Detalhada
 
-3. **Execução**:
+Para executar cada etapa separadamente:
+
+1. **Buscar vagas:**
 ```bash
-python app/main.py
+source venv/bin/activate && PYTHONPATH=. python3 scripts/search_jobs.py
 ```
 
-4. **Opções do Menu**:
-- 1: Buscar Vagas
-- 2: Combinar Vagas com Perfil
-- 3: Candidatar-se às Vagas
-- 4: Visualizar Análise de Vagas
-- 5: Executar Fluxo Completo
-- 6: Sair
-
-## ⚙️ Configuração
-
-O arquivo `config/config.yaml` contém todas as configurações necessárias:
-
-```yaml
-# Exemplo de configuração
-job_search:
-  platforms:
-    linkedin:
-      enabled: true
-      keywords: ["software engineer", "python", "react"]
-      locations: ["Remote", "São Paulo"]
-
-  matching:
-    required_skills: ["python", "git", "react"]
-    min_score: 0.3
-    salary_range:
-      min: 18000
-      max: 55000
+2. **Fazer matching:**
+```bash
+source venv/bin/activate && PYTHONPATH=. python3 scripts/match_jobs.py
 ```
 
-## 📊 Resultados
+3. **Aplicar para vagas:**
+```bash
+source venv/bin/activate && PYTHONPATH=. python3 scripts/apply_jobs.py
+```
 
-Os resultados são salvos em diferentes diretórios:
+### Visualizar Logs
 
-- `data/applications/`: Logs detalhados de cada candidatura
-- `data/matches/`: Vagas que combinam com seu perfil
-- `data/analysis/`: Relatórios e análises
+Para visualizar os logs e relatórios gerados:
 
-## 🔒 Segurança
+```bash
+source venv/bin/activate && PYTHONPATH=. python3 view_logs.py
+```
 
-- Nunca compartilhe seu `config.yaml` com credenciais
-- Use variáveis de ambiente para dados sensíveis
-- Mantenha suas chaves de API seguras
+## 📊 Logs e Relatórios
 
-## 📝 Logs
+O sistema gera automaticamente os seguintes arquivos:
 
-O sistema mantém logs detalhados:
-- Status de cada candidatura (🟢 sucesso, 🔴 falha, 🟡 pulado)
-- Motivos de falha ou rejeição
-- Estatísticas de sucesso
-- Tempo de processamento
+### Arquivos CSV Gerados
 
-## 🤝 Contribuindo
+1. **`autoapply_report_YYYYMMDD_HHMMSS.csv`** - Relatório detalhado com:
+   - Data/Hora de cada operação
+   - Tipo (BUSCA ou CANDIDATURA)
+   - Plataforma
+   - Título da vaga
+   - Empresa
+   - URL da vaga
+   - Método de aplicação
+   - Status
+   - Score de match
+   - Duração
+   - Erros (se houver)
+   - Detalhes adicionais
 
-1. Faça um Fork do projeto
+2. **`autoapply_summary_YYYYMMDD_HHMMSS.csv`** - Resumo executivo com:
+   - Métricas gerais (total de vagas, candidaturas, taxa de sucesso)
+   - Breakdown por plataforma
+   - Estatísticas de performance
+
+### Estrutura de Diretórios
+
+```
+data/logs/
+├── autoapply_report_*.csv          # Relatórios detalhados
+├── autoapply_summary_*.csv         # Resumos executivos
+├── sessions/                       # Logs de sessões
+├── applications/                   # Logs de aplicações
+├── searches/                       # Logs de buscas
+└── reports/                        # Relatórios em texto
+```
+
+## 🔧 Plataformas Suportadas
+
+- **LinkedIn** - Vagas corporativas
+- **WeWorkRemotely** - Vagas remotas
+- **Remotive** - Vagas remotas e freelancer
+- **AngelList/Wellfound** - Startups
+- **HackerNews** - Vagas da comunidade tech
+- **InfoJobs** - Vagas brasileiras
+- **Catho** - Vagas brasileiras
+
+## 📈 Métricas e Analytics
+
+O sistema rastreia automaticamente:
+
+- **Performance de Busca**: Vagas encontradas por plataforma
+- **Taxa de Match**: Percentual de vagas que correspondem ao perfil
+- **Taxa de Sucesso**: Percentual de aplicações bem-sucedidas
+- **Tempo de Execução**: Duração de cada operação
+- **Erros e Falhas**: Logs detalhados de problemas
+
+## 🛡️ Segurança e Boas Práticas
+
+- **Rate Limiting**: Delays entre requisições para evitar bloqueios
+- **User-Agent Rotation**: Headers de navegador realistas
+- **Error Handling**: Tratamento robusto de erros
+- **Logging Seguro**: Logs sem informações sensíveis
+
+## 🔍 Troubleshooting
+
+### Problemas Comuns
+
+1. **Erro de conexão com plataformas:**
+   - Verifique sua conexão com a internet
+   - Algumas plataformas podem ter proteções anti-bot
+
+2. **Poucas vagas encontradas:**
+   - Ajuste as keywords no `config.yaml`
+   - Verifique se as plataformas estão funcionando
+
+3. **Erro de importação:**
+   - Certifique-se de que o ambiente virtual está ativo
+   - Verifique se todas as dependências foram instaladas
+
+### Logs de Debug
+
+Para logs mais detalhados, adicione ao início do script:
+
+```python
+import logging
+logging.basicConfig(level=logging.DEBUG)
+```
+
+## 📝 Exemplo de Saída
+
+```
+🚀 AUTOAPPLY.AI - Sistema de Aplicação Automática
+============================================================
+📋 1. Carregando configurações...
+   ✅ Configurações carregadas
+📊 2. Inicializando sistema de logging...
+   ✅ Sessão iniciada: session_20250901_114307
+🔍 3. Iniciando busca de vagas...
+   📊 Total de vagas encontradas: 64
+🎯 4. Fazendo matching das vagas...
+   📊 Vagas com match: 52
+
+🏆 TOP 5 VAGAS COM MELHOR MATCH:
+1. Senior Data Engineer
+   Score: 40.0%
+   URL: https://remotive.com/remote-jobs/...
+
+📝 5. Aplicando para vagas...
+📄 Aplicação 1/5
+   Vaga: Senior Data Engineer
+   Empresa: Unknown
+   Score: 40.0%
+   ✅ Aplicação simulada com sucesso
+
+📊 6. Finalizando sessão e gerando relatório...
+
+============================================================
+📈 RELATÓRIO FINAL
+============================================================
+📊 Total de vagas encontradas: 64
+🎯 Vagas com match: 52
+📝 Aplicações realizadas: 5
+✅ Aplicações bem-sucedidas: 5
+❌ Aplicações falharam: 0
+📈 Taxa de sucesso: 100.0%
+📁 Logs salvos em: data/logs/
+📊 CSV Detalhado: data/logs/autoapply_report_20250901_114328.csv
+📈 CSV Resumo: data/logs/autoapply_summary_20250901_114328.csv
+
+🎉 Sistema AutoApply.AI executado com sucesso!
+📊 Os arquivos CSV com logs completos foram gerados automaticamente.
+```
+
+## 🤝 Contribuição
+
+1. Fork o projeto
 2. Crie uma branch para sua feature (`git checkout -b feature/AmazingFeature`)
 3. Commit suas mudanças (`git commit -m 'Add some AmazingFeature'`)
 4. Push para a branch (`git push origin feature/AmazingFeature`)
@@ -130,3 +272,14 @@ O sistema mantém logs detalhados:
 ## 📄 Licença
 
 Este projeto está sob a licença MIT. Veja o arquivo `LICENSE` para mais detalhes.
+
+## 📞 Suporte
+
+Para dúvidas ou problemas:
+- Abra uma issue no GitHub
+- Consulte a documentação
+- Verifique os logs gerados pelo sistema
+
+---
+
+**AutoApply.AI** - Automatize sua busca por vagas e maximize suas chances de conseguir a vaga dos sonhos! 🚀

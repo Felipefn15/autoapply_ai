@@ -1,9 +1,10 @@
-"""Job search models and matching logic."""
-import html
+"""
+Job Search Models
+"""
+from dataclasses import dataclass, asdict
+from typing import List, Optional, Set, Dict, Any
+from datetime import datetime
 import re
-from typing import Dict, List, Optional, Set
-from dataclasses import dataclass
-from loguru import logger
 
 from app.utils.text_extractor import extract_emails_from_text
 

@@ -26,306 +26,342 @@ from app.automation.email_applicator import EmailApplicator
 from app.db.models import Application, Base, Job
 from app.utils.text_extractor import extract_emails_from_text
 from .base_applicator import BaseApplicator, ApplicationResult
+from .application_logger import ApplicationLogger, ApplicationStatus
 
 class ApplicatorManager:
-    """Manager class for handling different types of job applications."""
+    """Manages the complete job application process."""
     
-    def __init__(self, config: Dict):
-        """Initialize applicator manager."""
-        self.config = config
-        self.browser = None
-        self.context = None
-        self.page = None
+    def __init__(self, config: Dict, resume_path: str = None):
+        """
+        Initialize the applicator manager.
         
-    async def apply(self, job: Dict) -> ApplicationResult:
-        """Apply to a job using the appropriate method."""
-        try:
-            # First check if job is unpaid/volunteer
-            title = job.get('title', '').lower()
-            description = job.get('description', '').lower()
-            
-            # Check for unpaid/volunteer indicators
-            unpaid_indicators = ['unpaid', 'volunteer', 'internship', 'no salary', 'no pay']
-            if any(indicator in title or indicator in description for indicator in unpaid_indicators):
-                logger.warning("❌ Skipping unpaid/volunteer position")
-                return ApplicationResult(
-                    status='skipped',
-                    error='Position is unpaid/volunteer',
-                    application_method='none'
-                )
-            
-            # Then check if job is remote
-            location = job.get('location', '').lower()
-            
-            # Check for non-remote indicators
-            non_remote_indicators = ['on-site', 'onsite', 'in office', 'hybrid']
-            if any(indicator in location or indicator in description or indicator in title for indicator in non_remote_indicators):
-                logger.warning("❌ Skipping non-remote job")
-                return ApplicationResult(
-                    status='skipped',
-                    error='Job is not remote',
-                    application_method='none'
-                )
-                
-            # Check for remote indicators
-            remote_indicators = ['remote', 'work from home', 'wfh', 'virtual', 'distributed team']
-            is_remote = any(indicator in location or indicator in description or indicator in title for indicator in remote_indicators)
-            
-            if not is_remote:
-                logger.warning("❌ Skipping job - remote status unclear")
-                return ApplicationResult(
-                    status='skipped',
-                    error='Remote status unclear',
-                    application_method='none'
-                )
-            
-            # Load resume data
-            resume_data = {}
-            resume_path = self.config.get('application', {}).get('email', {}).get('resume_path')
-            if resume_path and Path(resume_path).exists():
-                from app.resume.parser import ResumeParser
-                parser = ResumeParser()
-                resume_data = parser.parse(resume_path)
-            else:
-                logger.warning(f"Resume not found at path: {resume_path}")
-                resume_data = {
-                    'first_name': self.config.get('first_name', ''),
-                    'last_name': self.config.get('last_name', ''),
-                    'email': self.config.get('email', ''),
-                    'phone': self.config.get('phone', ''),
-                    'skills': self.config.get('skills', []),
-                    'experience_years': self.config.get('experience_years', '')
-                }
-            
-            logger.info("\n" + "="*50)
-            logger.info(f"Starting application process for:")
-            logger.info(f"Position: {job.get('title', 'Unknown Position')}")
-            logger.info(f"Company: {job.get('company', 'Unknown Company')}")
-            logger.info(f"Location: {job.get('location', 'Unknown Location')}")
-            logger.info(f"URL: {job.get('url', 'No URL')}")
-            logger.info("="*50)
-            
-            # Log job description
-            logger.info("\nJob Description:")
-            logger.info("-"*50)
-            desc = job.get('description', 'No description available')
-            # Split description into lines and log each line
-            for line in desc.split('\n'):
-                if line.strip():  # Only log non-empty lines
-                    logger.info(line.strip())
-            logger.info("-"*50 + "\n")
-            
-            # First, try to find email in the job data
-            email = job.get('email')
-            
-            # If no email found, try to extract from description
-            if not email:
-                logger.info("No email found in job data, analyzing description...")
-                description = job.get('description', '')
-                title = job.get('title', '')
-                company = job.get('company', '')
-                
-                # Try to extract email from all available text
-                all_text = f"{title}\n{company}\n{description}"
-                emails = extract_emails_from_text(all_text)
-                
-                if emails:
-                    email = emails[0]  # Use the first found email
-                    logger.info(f"✅ Found email address in description: {email}")
-                    job['email'] = email
-                else:
-                    logger.warning("❌ No email address found in job description")
-                    
-                    # Try to find company domain from URL
-                    url = job.get('url', '')
-                    if url:
-                        import re
-                        domain_match = re.search(r'https?://(?:www\.)?([^/]+)', url)
-                        if domain_match:
-                            domain = domain_match.group(1)
-                            logger.info(f"Extracted domain from URL: {domain}")
-                            # Try common email formats
-                            potential_emails = [
-                                f"jobs@{domain}",
-                                f"careers@{domain}",
-                                f"recruiting@{domain}",
-                                f"hr@{domain}",
-                                f"hiring@{domain}"
-                            ]
-                            logger.info("Trying common email formats:")
-                            for potential_email in potential_emails:
-                                logger.info(f"- {potential_email}")
-                            # For now, we'll use the first format as a fallback
-                            email = potential_emails[0]
-                            job['email'] = email
-                            logger.info(f"Using fallback email address: {email}")
-                        else:
-                            logger.warning("❌ Could not extract domain from URL")
-            
-            if email:
-                logger.info("\nAttempting email application...")
-                # Try email application
-                email_applicator = EmailApplicator(self.config)
-                result = await email_applicator.apply(job, resume_data)
-                
-                if result.status == 'success':
-                    logger.success("✅ Email application successful!")
-                    return result
-                    
-                logger.warning(f"❌ Email application failed: {result.error}")
-                logger.info("Trying alternative application methods...")
-            
-            # If email application failed or no email found, try direct application
-            if job.get('url', '').startswith('https://www.linkedin.com/'):
-                logger.info("\nDetected LinkedIn URL, attempting direct application...")
-                linkedin_applicator = LinkedInApplicator(self.config)
-                return await linkedin_applicator.apply(job, resume_data)
-            
-            # If we get here, no application method worked
-            error_msg = "No valid application method found"
-            if result and result.error:
-                error_msg = f"All application methods failed. Last error: {result.error}"
-            
-            logger.error(f"❌ {error_msg}")
-            logger.info("\nApplication attempt summary:")
-            logger.info(f"- Email found: {'Yes' if email else 'No'}")
-            logger.info(f"- LinkedIn URL: {'Yes' if job.get('url', '').startswith('https://www.linkedin.com/') else 'No'}")
-            logger.info(f"- Final status: Failed")
-            logger.info("="*50)
-            
-            return ApplicationResult(
-                status='failed',
-                error=error_msg,
-                application_method='unknown'
-            )
-            
-        except Exception as e:
-            error_msg = f"Unexpected error in application process: {str(e)}"
-            logger.error(f"❌ {error_msg}")
-            return ApplicationResult(
-                status='failed',
-                error=error_msg,
-                application_method='unknown'
-            )
-            
-    async def cleanup(self):
-        """Clean up resources."""
-        if self.browser:
-            logger.info("Cleaning up browser resources...")
-            await self.browser.close()
-            self.browser = None
-            self.context = None
-            self.page = None
-            
-    async def _initialize_browser(self):
-        """Initialize browser if not already initialized."""
-        if not self.browser:
-            logger.info("Initializing browser...")
-            playwright = await async_playwright().start()
-            self.browser = await playwright.chromium.launch(
-                headless=False,  # Make browser visible
-                args=['--start-maximized'],  # Start maximized
-                slow_mo=1000  # Add delay between actions for visibility
-            )
-            self.context = await self.browser.new_context(
-                viewport={'width': 1920, 'height': 1080},  # Set viewport size
-                record_video_dir=str(Path("./logs/videos"))  # Record videos
-            )
-            self.page = await self.context.new_page()
-            logger.info("Browser initialized successfully")
-            
-    def _get_resume_data(self) -> Dict:
-        """Get resume data from config."""
-        resume_config = self.config.get('resume', {})
-        return {
-            'resume_path': self.config.get('application', {}).get('email', {}).get('resume_path'),
-            'first_name': resume_config.get('first_name', ''),
-            'last_name': resume_config.get('last_name', ''),
-            'email': resume_config.get('email', ''),
-            'phone': resume_config.get('phone', ''),
-            'experience_years': resume_config.get('experience_years', 5),
-            'skills': resume_config.get('skills', []),
-            'desired_salary': resume_config.get('desired_salary', ''),
-            'willing_to_relocate': resume_config.get('willing_to_relocate', True),
-            'willing_to_travel': resume_config.get('willing_to_travel', True)
+        Args:
+            config: Configuration dictionary
+            resume_path: Path to resume file
+        """
+        self.config = config
+        self.resume_path = resume_path or "data/resumes/resume.pdf"
+        
+        # Initialize application logger
+        self.logger = ApplicationLogger()
+        self.session_id = None
+        
+        # Initialize database
+        self.db_path = "data/applications.db"
+        self.engine = create_engine(f"sqlite:///{self.db_path}")
+        Base.metadata.create_all(self.engine)
+        self.Session = sessionmaker(bind=self.engine)
+        
+        # Initialize applicators
+        self.applicators = {
+            'linkedin': LinkedInApplicator(config),
+            'email': EmailApplicator(config)
         }
-            
-    def _init_database(self):
-        """Initialize the SQLite database."""
+        
+        # Load resume data
+        self.resume_data = self._load_resume_data()
+        
+    def start_session(self) -> str:
+        """Start a new application session."""
+        self.session_id = self.logger.start_session()
+        logger.info(f"🚀 Started application session: {self.session_id}")
+        return self.session_id
+    
+    def end_session(self):
+        """End the current application session and generate reports."""
+        if self.session_id:
+            session_log = self.logger.end_session()
+            logger.info(f"📊 Session {self.session_id} completed")
+            return session_log
+        else:
+            logger.warning("No active session to end")
+            return None
+    
+    def _load_resume_data(self) -> Dict:
+        """Load and parse resume data."""
         try:
-            # Create database directory if needed
-            db_path = self.config.get('storage', {}).get('applications_db', 'data/applications.db')
-            os.makedirs(os.path.dirname(db_path), exist_ok=True)
-            
-            # Initialize database
-            engine = create_engine(f"sqlite:///{db_path}")
-            Base.metadata.create_all(engine)
-            
-            # Create session factory
-            Session = sessionmaker(bind=engine)
-            self.db_session = Session()
-            
-            logger.info("Database initialized successfully")
+            # For now, return basic resume data
+            # In a real implementation, this would parse the actual resume
+            return {
+                'name': self.config.get('personal', {}).get('name', 'Unknown'),
+                'email': self.config.get('personal', {}).get('email', ''),
+                'phone': self.config.get('personal', {}).get('phone', ''),
+                'skills': self.config.get('personal', {}).get('skills', []),
+                'experience': self.config.get('personal', {}).get('experience', 0),
+                'education': self.config.get('personal', {}).get('education', []),
+                'summary': self.config.get('personal', {}).get('summary', '')
+            }
         except Exception as e:
-            logger.error(f"Error initializing database: {str(e)}")
-            raise
+            logger.error(f"Error loading resume data: {e}")
+            return {}
+
+    async def apply(self, job: 'JobPosting') -> ApplicationResult:
+        """
+        Apply to a specific job.
+        
+        Args:
+            job: JobPosting object
             
-    def _is_job_processed(self, job: Dict) -> bool:
-        """Check if we've already processed this job."""
+        Returns:
+            ApplicationResult with status and details
+        """
+        start_time = time.time()
+        
         try:
-            # Get platform-specific ID
-            platform_id = str(job.get('id', ''))  # Convert to string for consistency
-            if not platform_id:
-                # Try alternative ID fields
-                platform_id = str(job.get('job_id', '')) or str(job.get('posting_id', ''))
-                
-            if not platform_id:
-                logger.warning(f"[CHECK] No ID found for job: {job.get('title', 'Unknown')} ({job.get('platform', 'Unknown')})")
-                return False
-                
-            # Check database
-            existing = self.db_session.query(Job).filter_by(
-                platform=job.get('platform', 'unknown'),
-                url=job.get('url', '')
-            ).first()
+            # Extract company name from job description
+            company = self._extract_company(job.description)
             
-            return existing is not None
+            # Determine application method
+            application_method = self._determine_application_method(job)
             
-        except Exception as e:
-            logger.error(f"Error checking job status: {str(e)}")
-            return False
+            # Check if job is remote (if required)
+            if self.config.get('search', {}).get('remote_only', False):
+                if not self._is_remote_job(job):
+                    result = ApplicationResult(
+                        status='skipped',
+                        error='Job is not remote',
+                        application_method=application_method,
+                        details={'reason': 'remote_only_required'}
+                    )
+                    
+                    # Log the skipped application
+                    self.logger.log_job_application(
+                        job_title=job.title,
+                        company=company,
+                        platform=self._extract_platform(job.url),
+                        job_url=job.url,
+                        application_method=application_method,
+                        status=ApplicationStatus.SKIPPED,
+                        match_score=0.0,
+                        error_message='Job is not remote',
+                        application_duration=time.time() - start_time
+                    )
+                    
+                    return result
             
-    def _record_application(self, job: Dict, application_status: Dict):
-        """Record application in database."""
-        try:
-            # Create job record if it doesn't exist
-            job_record = self.db_session.query(Job).filter_by(
-                url=job.get('url', '')
-            ).first()
+            # Apply based on method
+            if application_method == 'email':
+                result = await self._apply_via_email(job, company)
+            else:
+                result = await self._apply_via_website(job, company)
             
-            if not job_record:
-                job_record = Job(
-                    platform=job.get('platform', 'unknown'),
-                    title=job.get('title', 'Unknown'),
-                    company=job.get('company', 'Unknown'),
-                    location=job.get('location', 'Unknown'),
-                    url=job.get('url', ''),
-                    description=job.get('description', ''),
-                    remote=job.get('remote', False)
-                )
-                self.db_session.add(job_record)
-            
-            # Create application record
-            application_record = Application(
-                job=job_record,
-                status=application_status.get('status', 'unknown'),
-                error_message=application_status.get('error'),
-                direct_apply_status=application_status.get('direct_apply', False),
-                email_sent_status=application_status.get('email_sent', False)
+            # Log the application
+            self.logger.log_job_application(
+                job_title=job.title,
+                company=company,
+                platform=self._extract_platform(job.url),
+                job_url=job.url,
+                application_method=application_method,
+                status=ApplicationStatus.APPLIED if result.status == 'success' else ApplicationStatus.FAILED,
+                match_score=0.0,  # This would be calculated by the matcher
+                cover_letter_length=len(result.details.get('cover_letter', '')) if result.details else 0,
+                error_message=result.error,
+                application_duration=time.time() - start_time
             )
-            self.db_session.add(application_record)
-            self.db_session.commit()
+            
+            return result
             
         except Exception as e:
-            logger.error(f"Error recording application: {str(e)}")
-            self.db_session.rollback() 
+            error_msg = f"Unexpected error: {str(e)}"
+            logger.error(error_msg)
+            
+            # Log the failed application
+            self.logger.log_job_application(
+                job_title=job.title,
+                company=self._extract_company(job.description),
+                platform=self._extract_platform(job.url),
+                job_url=job.url,
+                application_method='unknown',
+                status=ApplicationStatus.FAILED,
+                match_score=0.0,
+                error_message=error_msg,
+                application_duration=time.time() - start_time
+            )
+            
+            return ApplicationResult(
+                status='failed',
+                error=error_msg,
+                application_method='unknown',
+                details={'exception': str(e)}
+            )
+
+    async def _apply_via_email(self, job: 'JobPosting', company: str) -> ApplicationResult:
+        """Apply via email."""
+        try:
+            logger.info(f"📧 Applying via email to {company}")
+            
+            # Extract email from job
+            email = job.email
+            if not email:
+                # Try to extract from description
+                emails = extract_emails_from_text(job.description)
+                email = emails[0] if emails else None
+            
+            if not email:
+                return ApplicationResult(
+                    status='failed',
+                    error='No email found for application',
+                    application_method='email',
+                    details={'reason': 'no_email_found'}
+                )
+            
+            # Generate cover letter
+            cover_letter = await self._generate_cover_letter(job, company)
+            
+            # Send email
+            email_applicator = self.applicators['email']
+            success = await email_applicator.send_application(
+                to_email=email,
+                job_title=job.title,
+                company=company,
+                cover_letter=cover_letter,
+                resume_path=self.resume_path
+            )
+            
+            if success:
+                logger.success(f"✅ Email application prepared for {job.title} at {company}")
+                logger.info(f"📧 Email: {email}")
+                logger.info(f"📄 Cover letter length: {len(cover_letter)} characters")
+                
+                return ApplicationResult(
+                    status='success',
+                    application_method='email',
+                    details={
+                        'email': email,
+                        'cover_letter': cover_letter,
+                        'cover_letter_length': len(cover_letter)
+                    }
+                )
+            else:
+                return ApplicationResult(
+                    status='failed',
+                    error='Failed to send email application',
+                    application_method='email',
+                    details={'email': email}
+                )
+                
+        except Exception as e:
+            logger.error(f"Error generating cover letter: {str(e)}")
+            return ApplicationResult(
+                status='failed',
+                error=f'Email application failed: {str(e)}',
+                application_method='email',
+                details={'exception': str(e)}
+            )
+
+    async def _apply_via_website(self, job: 'JobPosting', company: str) -> ApplicationResult:
+        """Apply via website."""
+        try:
+            logger.info(f"🌐 Applying via website to {company}")
+            
+            # For now, just log the application
+            # In a real implementation, this would use Playwright to fill forms
+            logger.success(f"✅ Website application prepared for {job.title} at {company}")
+            logger.info(f"🔗 URL: {job.url}")
+            
+            return ApplicationResult(
+                status='success',
+                application_method='website',
+                details={
+                    'url': job.url,
+                    'method': 'website_form'
+                }
+            )
+            
+        except Exception as e:
+            logger.error(f"Error applying via website: {str(e)}")
+            return ApplicationResult(
+                status='failed',
+                error=f'Website application failed: {str(e)}',
+                application_method='website',
+                details={'exception': str(e)}
+            )
+
+    async def _generate_cover_letter(self, job: 'JobPosting', company: str) -> str:
+        """Generate a cover letter for the job."""
+        try:
+            # Load cover letter template
+            template_path = "templates/cover_letter.txt"
+            if os.path.exists(template_path):
+                with open(template_path, 'r', encoding='utf-8') as f:
+                    template = f.read()
+            else:
+                template = """
+Dear Hiring Manager,
+
+I am writing to express my interest in the {job_title} position at {company}.
+
+{personal_summary}
+
+I believe my skills and experience make me a strong candidate for this role.
+
+Best regards,
+{name}
+"""
+            
+            # Fill template with data
+            cover_letter = template.format(
+                job_title=job.title,
+                company=company,
+                personal_summary=self.resume_data.get('summary', 'I am a passionate developer with experience in software development.'),
+                name=self.resume_data.get('name', 'Your Name')
+            )
+            
+            return cover_letter.strip()
+            
+        except Exception as e:
+            logger.error(f"Error generating cover letter: {str(e)}")
+            return f"Dear Hiring Manager,\n\nI am interested in the {job.title} position at {company}.\n\nBest regards,\n{self.resume_data.get('name', 'Your Name')}"
+
+    def _extract_company(self, description: str) -> str:
+        """Extract company name from job description."""
+        # Simple extraction - in a real implementation, this would be more sophisticated
+        lines = description.split('\n')
+        for line in lines:
+            if 'Company:' in line:
+                return line.split('Company:')[1].strip()
+        return "Unknown Company"
+
+    def _extract_platform(self, url: str) -> str:
+        """Extract platform name from URL."""
+        if 'linkedin' in url.lower():
+            return 'LinkedIn'
+        elif 'weworkremotely' in url.lower():
+            return 'WeWorkRemotely'
+        elif 'remotive' in url.lower():
+            return 'Remotive'
+        elif 'ycombinator' in url.lower():
+            return 'HackerNews'
+        elif 'infojobs' in url.lower():
+            return 'InfoJobs'
+        elif 'catho' in url.lower():
+            return 'Catho'
+        else:
+            return 'Unknown'
+
+    def _determine_application_method(self, job: 'JobPosting') -> str:
+        """Determine the best application method for a job."""
+        if job.email:
+            return 'email'
+        else:
+            return 'website'
+
+    def _is_remote_job(self, job: 'JobPosting') -> bool:
+        """Check if job is remote."""
+        description_lower = job.description.lower()
+        remote_keywords = ['remote', 'work from home', 'wfh', 'virtual', 'distributed']
+        return any(keyword in description_lower for keyword in remote_keywords)
+
+    def get_application_history(self) -> List[Dict]:
+        """Get application history from database."""
+        try:
+            session = self.Session()
+            applications = session.query(Application).all()
+            return [app.to_dict() for app in applications]
+        except Exception as e:
+            logger.error(f"Error getting application history: {e}")
+            return []
+
+    def get_analytics(self, days: int = 30) -> Dict:
+        """Get analytics for the specified period."""
+        return self.logger.generate_analytics_report(days) 

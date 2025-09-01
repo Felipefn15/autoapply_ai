@@ -30,6 +30,22 @@ def load_config(config_path: str = "config/config.yaml") -> Dict:
         logger.error(f"Error loading config: {str(e)}")
         return {}
 
+def load_profile(profile_path: str = "config/profile.yaml") -> Dict:
+    """Load user profile from YAML file."""
+    try:
+        profile_path = Path(profile_path)
+        if not profile_path.is_file():
+            logger.error(f"Profile file not found: {profile_path}")
+            return {}
+            
+        with open(profile_path, 'r') as f:
+            profile = yaml.safe_load(f)
+        logger.info("Loaded user profile")
+        return profile
+    except Exception as e:
+        logger.error(f"Error loading profile: {str(e)}")
+        return {}
+
 async def run_script(script_name: str, config_path: str = "config/config.yaml", 
                     resume_path: str = "data/resumes/resume.pdf",
                     matches_dir: str = "data/matches") -> bool:

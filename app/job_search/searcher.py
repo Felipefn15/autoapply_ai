@@ -3,6 +3,7 @@ Job Search Module - Search for jobs across multiple platforms
 """
 import asyncio
 import os
+import time
 from typing import Dict, List, Optional
 from dotenv import load_dotenv
 
@@ -17,17 +18,26 @@ from .job_sources import (
     HackerNewsJobSource
 )
 from .models import JobPosting
-from .platforms import LinkedInScraper, HackerNewsScraper
+from .platforms import (
+    LinkedInScraper, 
+    HackerNewsScraper,
+    WeWorkRemotelyScraper,
+    RemotiveScraper,
+    AngelListScraper,
+    InfoJobsScraper,
+    CathoScraper
+)
 
 class JobSearcher:
     """Job searcher class."""
     
-    def __init__(self, config: Optional[Dict] = None):
+    def __init__(self, config: Optional[Dict] = None, logger_instance=None):
         """
         Initialize the job searcher.
         
         Args:
             config: Optional configuration dictionary
+            logger_instance: Optional ApplicationLogger instance for detailed logging
         """
         # Load environment variables
         load_dotenv()
@@ -47,10 +57,23 @@ class JobSearcher:
             }
         }
         
+        # Store logger instance
+        self.logger_instance = logger_instance
+        
         # Initialize scrapers with configuration
         self.scrapers = [
+            # International platforms
+            WeWorkRemotelyScraper(self.config),
+            RemotiveScraper(self.config),
+            AngelListScraper(self.config),
+            HackerNewsScraper(self.config),
+            
+            # Brazilian platforms
+            InfoJobsScraper(self.config),
+            CathoScraper(self.config),
+            
+            # LinkedIn (requires credentials)
             LinkedInScraper(self.config),
-            HackerNewsScraper(self.config)
         ]
 
     async def search(self, keywords: Optional[List[str]] = None) -> List[JobPosting]:
@@ -63,20 +86,26 @@ class JobSearcher:
         Returns:
             List of JobPosting objects with only title, description and email
         """
+        # Get keywords from config or use defaults
         if keywords:
-            # Update config with provided keywords
-            self.config['search']['keywords'] = keywords
+            search_keywords = keywords
+        else:
+            # Try to get keywords from config
+            if 'personal' in self.config and 'skills' in self.config['personal']:
+                search_keywords = self.config['personal']['skills']
+            else:
+                search_keywords = ['software engineer', 'developer', 'python', 'react']
             
         all_jobs = []
         
         try:
-            logger.info(f"Starting job search with keywords: {', '.join(self.config['search']['keywords'])}")
+            logger.info(f"Starting job search with keywords: {', '.join(search_keywords)}")
             
             # Create tasks for each scraper
             tasks = []
             for scraper in self.scrapers:
                 logger.info(f"Initializing search on {scraper.__class__.__name__}")
-                task = asyncio.create_task(scraper.search())
+                task = asyncio.create_task(self._search_with_logging(scraper, search_keywords))
                 tasks.append(task)
             
             # Wait for all scrapers to complete
@@ -87,6 +116,15 @@ class JobSearcher:
                 platform = scraper.__class__.__name__
                 if isinstance(result, Exception):
                     logger.error(f"Error in {platform}: {str(result)}")
+                    # Log the error to the application logger
+                    if self.logger_instance:
+                        self.logger_instance.log_job_search(
+                            platform=platform,
+                            keywords=search_keywords,
+                            jobs_found=0,
+                            search_duration=0.0,
+                            errors=[str(result)]
+                        )
                     continue
                     
                 if isinstance(result, list):
@@ -98,7 +136,7 @@ class JobSearcher:
                         simplified_job = JobPosting(
                             title=job.title,
                             description=job.description,
-                            email=None,  # Email será extraído posteriormente se necessário
+                            email=job.email,
                             url=job.url
                         )
                         all_jobs.append(simplified_job)
@@ -121,6 +159,45 @@ class JobSearcher:
         except Exception as e:
             logger.error(f"Error searching jobs: {str(e)}")
             return []
+    
+    async def _search_with_logging(self, scraper, keywords: List[str]) -> List[JobPosting]:
+        """Search with a specific scraper and log the results."""
+        platform = scraper.__class__.__name__
+        start_time = time.time()
+        errors = []
+        
+        try:
+            # Perform the search
+            jobs = await scraper.search()
+            search_duration = time.time() - start_time
+            
+            # Log the search results
+            if self.logger_instance:
+                self.logger_instance.log_job_search(
+                    platform=platform,
+                    keywords=keywords,
+                    jobs_found=len(jobs),
+                    search_duration=search_duration,
+                    errors=errors
+                )
+            
+            return jobs
+            
+        except Exception as e:
+            search_duration = time.time() - start_time
+            errors.append(str(e))
+            
+            # Log the error
+            if self.logger_instance:
+                self.logger_instance.log_job_search(
+                    platform=platform,
+                    keywords=keywords,
+                    jobs_found=0,
+                    search_duration=search_duration,
+                    errors=errors
+                )
+            
+            raise e
     
     def filter_jobs(self, jobs: List[JobPosting]) -> List[JobPosting]:
         """Filter jobs based on preferences."""

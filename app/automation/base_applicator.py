@@ -20,6 +20,7 @@ class ApplicationResult:
     status: str  # 'success', 'failed', or 'skipped'
     error: Optional[str] = None  # Error message if status is 'failed'
     application_method: str = 'unknown'  # Method used for application: 'direct', 'email', 'form', etc.
+    details: Optional[Dict] = None  # Additional details about the application
 
 class BaseApplicator(ABC):
     """Base class for platform-specific applicators."""
