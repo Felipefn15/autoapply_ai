@@ -17,6 +17,7 @@ from app.job_search.searcher import JobSearcher
 from app.matching.matcher import JobMatcher
 from app.automation.applicator_manager import ApplicatorManager
 from app.automation.application_logger import ApplicationLogger, ApplicationStatus
+from app.automation.direct_applicator import DirectApplicator
 from app.main import load_config
 
 async def run_complete_search():
@@ -95,15 +96,19 @@ async def run_complete_search():
             logger.info(f"   URL: {job_url}")
             logger.info("")
         
-        # 5. Aplicar para vagas
-        logger.info("📝 5. Aplicando para vagas...")
-        applicator = ApplicatorManager(config)
-        applicator.start_session()
+        # 5. Aplicar para vagas usando sistema direto
+        logger.info("📝 5. Aplicando para vagas usando sistema direto...")
+        
+        # Inicializar sistema de aplicações diretas
+        direct_applicator = DirectApplicator(config)
         
         successful_applications = 0
-        total_applications = min(len(matches), 5)  # Aplicar para no máximo 5 vagas
+        failed_applications = 0
+        total_applications = min(len(matches), 50)  # Aplicar para até 50 vagas
         
-        for i, match in enumerate(matches[:5], 1):
+        logger.info(f"🎯 Aplicando para {total_applications} vagas com melhor match...")
+        
+        for i, match in enumerate(matches[:total_applications], 1):
             logger.info(f"\n📄 Aplicação {i}/{total_applications}")
             
             # Preparar dados da vaga
@@ -132,24 +137,74 @@ async def run_complete_search():
             logger.info(f"   Empresa: {job_data['company']}")
             logger.info(f"   Score: {score:.1%}")
             logger.info(f"   URL: {job_data['url']}")
+            logger.info(f"   Plataforma: {job_data['platform']}")
             
-            # Simular aplicação
-            logger.info("   🔄 Simulando aplicação...")
-            await asyncio.sleep(1)  # Simular tempo de aplicação
+            # Aplicar para a vaga usando sistema direto
+            logger.info("   🚀 Aplicando diretamente...")
             
-            # Log da tentativa de aplicação
-            app_logger.log_job_application(
-                job_data=job_data,
-                status=ApplicationStatus.APPLIED,
-                match_score=score,
-                platform=job_data['platform']
-            )
+            try:
+                # Criar objeto JobPosting para o aplicador direto
+                from app.job_search.models import JobPosting
+                job_posting = JobPosting(
+                    title=job_data['title'],
+                    description=job_data['description'],
+                    url=job_data['url'],
+                    email=job_data.get('email')
+                )
+                
+                # Aplicar para a vaga
+                result = await direct_applicator.apply_to_job(job_posting)
+                
+                if result.get('success', False):
+                    logger.info(f"   ✅ Aplicação bem-sucedida: {result.get('message', '')}")
+                    successful_applications += 1
+                    
+                    # Log da aplicação bem-sucedida
+                    app_logger.log_job_application(
+                        job_data=job_data,
+                        status=ApplicationStatus.APPLIED,
+                        match_score=score,
+                        platform=job_data['platform']
+                    )
+                else:
+                    logger.warning(f"   ⚠️ Aplicação falhou: {result.get('error', 'Erro desconhecido')}")
+                    failed_applications += 1
+                    
+                    # Log da aplicação falhada
+                    app_logger.log_job_application(
+                        job_data=job_data,
+                        status=ApplicationStatus.FAILED,
+                        match_score=score,
+                        platform=job_data['platform']
+                    )
+                
+            except Exception as e:
+                logger.error(f"   ❌ Erro na aplicação: {str(e)}")
+                failed_applications += 1
+                
+                # Log do erro
+                app_logger.log_job_application(
+                    job_data=job_data,
+                    status=ApplicationStatus.FAILED,
+                    match_score=score,
+                    platform=job_data['platform']
+                )
             
-            logger.info("   ✅ Aplicação simulada com sucesso")
-            successful_applications += 1
+            # Delay entre aplicações para evitar rate limiting
+            await asyncio.sleep(1)  # Reduzido para 1 segundo
         
-        # 6. Finalizar sessão e gerar relatório
-        logger.info("\n📊 6. Finalizando sessão e gerando relatório...")
+        # 6. Mostrar estatísticas do sistema direto
+        logger.info("\n📊 6. Estatísticas do sistema de aplicações diretas...")
+        direct_stats = direct_applicator.get_application_stats()
+        logger.info(f"   📈 Total de aplicações diretas: {direct_stats.get('total_applications', 0)}")
+        logger.info(f"   ✅ Aplicações bem-sucedidas: {direct_stats.get('successful_applications', 0)}")
+        logger.info(f"   ❌ Aplicações falharam: {direct_stats.get('failed_applications', 0)}")
+        logger.info(f"   📊 Taxa de sucesso: {direct_stats.get('success_rate', 0)}%")
+        logger.info(f"   🌐 Plataformas usadas: {', '.join(direct_stats.get('platforms_used', []))}")
+        logger.info(f"   🔧 Métodos usados: {', '.join(direct_stats.get('methods_used', []))}")
+        
+        # 7. Finalizar sessão e gerar relatório
+        logger.info("\n📊 7. Finalizando sessão e gerando relatório...")
         session_log = app_logger.end_session()
         
         # Mostrar caminhos dos arquivos CSV
@@ -162,10 +217,15 @@ async def run_complete_search():
         logger.info("=" * 60)
         logger.info(f"📊 Total de vagas encontradas: {len(all_jobs)}")
         logger.info(f"🎯 Vagas com match: {len(matches)}")
-        logger.info(f"📝 Aplicações realizadas: {successful_applications}")
+        logger.info(f"📝 Aplicações realizadas: {successful_applications + failed_applications}")
         logger.info(f"✅ Aplicações bem-sucedidas: {successful_applications}")
-        logger.info(f"❌ Aplicações falharam: 0")
-        logger.info(f"📈 Taxa de sucesso: 100.0%")
+        logger.info(f"❌ Aplicações falharam: {failed_applications}")
+        
+        if successful_applications + failed_applications > 0:
+            success_rate = (successful_applications / (successful_applications + failed_applications)) * 100
+            logger.info(f"📈 Taxa de sucesso: {success_rate:.1f}%")
+        else:
+            logger.info(f"📈 Taxa de sucesso: 0.0%")
         logger.info(f"📁 Logs salvos em: data/logs/")
         logger.info(f"📄 Relatório: data/logs/reports/session_{timestamp}_report.txt")
         logger.info(f"📊 CSV Detalhado: {csv_report_path}")

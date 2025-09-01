@@ -4,6 +4,7 @@ AngelList/Wellfound Job Scraper
 import asyncio
 import aiohttp
 import json
+import re
 from typing import Dict, List, Optional
 from loguru import logger
 
