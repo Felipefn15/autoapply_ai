@@ -74,12 +74,11 @@ class CathoScraper:
         try:
             # Catho uses different URL structure - try multiple approaches
             urls_to_try = [
-                f"{self.base_url}/vagas/tecnologia-da-informacao",
-                f"{self.base_url}/vagas/desenvolvimento",
-                f"{self.base_url}/vagas/engenharia",
-                f"{self.base_url}/vagas",
-                f"{self.base_url}/empregos",
-                f"{self.base_url}/busca"
+                f"{self.base_url}/vagas/",
+                f"{self.base_url}/anuncio-vaga/",
+                f"{self.base_url}/cadastro-candidato/",
+                f"{self.base_url}/empregos/",
+                f"{self.base_url}/busca/"
             ]
             
             html = None

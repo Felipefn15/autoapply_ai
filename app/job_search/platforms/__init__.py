@@ -8,6 +8,8 @@ from .remotive import RemotiveScraper
 from .angellist import AngelListScraper
 from .infojobs import InfoJobsScraper
 from .catho import CathoScraper
+from .glassdoor import GlassdoorScraper
+from .indeed_br import IndeedBrasilScraper
 
 __all__ = [
     'LinkedInScraper',
@@ -16,5 +18,7 @@ __all__ = [
     'RemotiveScraper',
     'AngelListScraper',
     'InfoJobsScraper',
-    'CathoScraper'
+    'CathoScraper',
+    'GlassdoorScraper',
+    'IndeedBrasilScraper'
 ] 

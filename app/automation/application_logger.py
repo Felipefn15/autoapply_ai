@@ -397,4 +397,171 @@ class ApplicationLogger:
             
         except Exception as e:
             logger.error(f"❌ Error ending session: {str(e)}")
-            return {} 
+            return {}
+    
+    def _save_session_log(self):
+        """Save the current session log to file."""
+        try:
+            if not self.session_log:
+                return
+            
+            # Create logs directory if it doesn't exist
+            logs_dir = Path("data/logs")
+            logs_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Save session log as JSON
+            session_file = logs_dir / f"session_{self.session_id}_log.json"
+            with open(session_file, 'w', encoding='utf-8') as f:
+                json.dump(self.session_log.__dict__, f, indent=2, ensure_ascii=False, default=str)
+            
+            logger.info(f"💾 Session log saved: {session_file}")
+            
+        except Exception as e:
+            logger.error(f"❌ Error saving session log: {str(e)}")
+    
+    def _generate_session_report(self):
+        """Generate a text report for the current session."""
+        try:
+            if not self.session_log:
+                return
+            
+            # Create reports directory
+            reports_dir = Path("data/logs/reports")
+            reports_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Generate report content
+            report_content = f"""
+📊 SESSION REPORT: {self.session_log.session_id}
+{'=' * 60}
+
+📅 Session Details:
+   Start Time: {self.session_log.start_time}
+   End Time: {self.session_log.end_time}
+   Duration: {self.session_log.end_time} - {self.session_log.start_time}
+
+🔍 Search Summary:
+   Total Jobs Found: {self.session_log.total_jobs_found}
+   Platforms Searched: {', '.join(self.session_log.platforms_searched)}
+
+📝 Application Summary:
+   Total Applications: {self.session_log.total_applications}
+   Successful: {self.session_log.successful_applications}
+   Failed: {self.session_log.failed_applications}
+   Skipped: {self.session_log.skipped_applications}
+   Success Rate: {self.session_log.success_rate:.1f}%
+
+🔄 Anti-Duplication Stats:
+   Duplicate Jobs Detected: {len([app for app in self.application_logs if app.status == ApplicationStatus.DUPLICATE])}
+   Already Applied Jobs: {len([app for app in self.application_logs if app.status == ApplicationStatus.ALREADY_APPLIED])}
+
+📋 Application Details:
+"""
+            
+            # Add application details
+            for i, app in enumerate(self.application_logs, 1):
+                report_content += f"""
+{i}. {app.job_title} - {app.company}
+   Platform: {app.platform}
+   Status: {app.status.value}
+   Match Score: {app.match_score:.1f}%
+   URL: {app.job_url}
+"""
+            
+            # Save report
+            report_file = reports_dir / f"session_{self.session_id}_report.txt"
+            with open(report_file, 'w', encoding='utf-8') as f:
+                f.write(report_content)
+            
+            logger.info(f"📄 Session report generated: {report_file}")
+            
+        except Exception as e:
+            logger.error(f"❌ Error generating session report: {str(e)}")
+    
+    def generate_csv_report(self) -> str:
+        """Generate a detailed CSV report for the current session."""
+        try:
+            import csv
+            
+            # Create logs directory
+            logs_dir = Path("data/logs")
+            logs_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Generate filename
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            csv_file = logs_dir / f"autoapply_report_{timestamp}.csv"
+            
+            with open(csv_file, 'w', newline='', encoding='utf-8') as f:
+                writer = csv.writer(f)
+                
+                # Write header
+                writer.writerow([
+                    'Timestamp', 'Job Title', 'Company', 'Platform', 'URL',
+                    'Status', 'Match Score', 'Application Method', 'Error Message'
+                ])
+                
+                # Write data
+                for app in self.application_logs:
+                    writer.writerow([
+                        app.timestamp,
+                        app.job_title,
+                        app.company,
+                        app.platform,
+                        app.job_url,
+                        app.status.value,
+                        f"{app.match_score:.1f}%",
+                        app.application_method,
+                        app.error_message or ''
+                    ])
+            
+            logger.info(f"📊 CSV report generated: {csv_file}")
+            return str(csv_file)
+            
+        except Exception as e:
+            logger.error(f"❌ Error generating CSV report: {str(e)}")
+            return ""
+    
+    def generate_summary_csv(self) -> str:
+        """Generate a summary CSV report for the current session."""
+        try:
+            import csv
+            
+            # Create logs directory
+            logs_dir = Path("data/logs")
+            logs_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Generate filename
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            csv_file = logs_dir / f"autoapply_summary_{timestamp}.csv"
+            
+            with open(csv_file, 'w', newline='', encoding='utf-8') as f:
+                writer = csv.writer(f)
+                
+                # Write header
+                writer.writerow([
+                    'Metric', 'Value'
+                ])
+                
+                # Write summary data
+                summary_data = [
+                    ['Session ID', self.session_id],
+                    ['Start Time', self.session_start_time.isoformat() if self.session_start_time else ''],
+                    ['End Time', datetime.now().isoformat()],
+                    ['Total Jobs Found', sum(log.jobs_found for log in self.search_logs)],
+                    ['Total Applications', len(self.application_logs)],
+                    ['Successful Applications', len([app for app in self.application_logs if app.status == ApplicationStatus.APPLIED])],
+                    ['Failed Applications', len([app for app in self.application_logs if app.status == ApplicationStatus.FAILED])],
+                    ['Skipped Applications', len([app for app in self.application_logs if app.status == ApplicationStatus.SKIPPED])],
+                    ['Duplicate Jobs Detected', len([app for app in self.application_logs if app.status == ApplicationStatus.DUPLICATE])],
+                    ['Already Applied Jobs', len([app for app in self.application_logs if app.status == ApplicationStatus.ALREADY_APPLIED])],
+                    ['Platforms Searched', ', '.join(set(log.platform for log in self.search_logs))]
+                ]
+                
+                for row in summary_data:
+                    writer.writerow(row)
+            
+            logger.info(f"📈 Summary CSV generated: {csv_file}")
+            return str(csv_file)
+            
+        except Exception as e:
+            logger.error(f"❌ Error generating summary CSV: {str(e)}")
+            return ""

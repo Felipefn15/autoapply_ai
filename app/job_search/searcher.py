@@ -25,7 +25,9 @@ from .platforms import (
     RemotiveScraper,
     AngelListScraper,
     InfoJobsScraper,
-    CathoScraper
+    CathoScraper,
+    GlassdoorScraper,
+    IndeedBrasilScraper
 )
 
 class JobSearcher:
@@ -85,6 +87,8 @@ class JobSearcher:
             HackerNewsScraper(self.config),
             InfoJobsScraper(self.config),
             CathoScraper(self.config),
+            GlassdoorScraper(self.config),
+            IndeedBrasilScraper(self.config),
         ])
         
         logger.info(f"🚀 Initialized {len(self.scrapers)} scrapers for maximum job discovery")

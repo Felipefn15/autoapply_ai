@@ -74,12 +74,11 @@ class InfoJobsScraper:
         try:
             # InfoJobs uses different URL structure - try multiple approaches
             urls_to_try = [
-                f"{self.base_url}/vagas-de-emprego/tecnologia-da-informacao",
-                f"{self.base_url}/vagas-de-emprego/desenvolvimento",
-                f"{self.base_url}/vagas-de-emprego/engenharia",
+                f"{self.base_url}/empregos-em-sao-paulo.aspx",
+                f"{self.base_url}/empregos-em-brasil.aspx",
                 f"{self.base_url}/vagas-de-emprego",
-                f"{self.base_url}/vagas",
-                f"{self.base_url}/empregos"
+                f"{self.base_url}/empregos",
+                f"{self.base_url}/busca"
             ]
             
             html = None

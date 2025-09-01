@@ -183,34 +183,54 @@ class AngelListScraper:
         jobs = []
         
         try:
-            # Try to scrape the jobs page directly
-            url = f"{self.base_url}/jobs?department={category}&remote=true"
-            logger.info(f"Trying web scraping: {url}")
+            # Try multiple web scraping approaches
+            urls_to_try = [
+                f"{self.base_url}/jobs?department={category}&remote=true",
+                f"{self.base_url}/jobs?q={category}&remote=true",
+                f"{self.base_url}/jobs?category={category}",
+                f"{self.base_url}/jobs?search={category}"
+            ]
             
-            async with session.get(url, headers=self.headers, timeout=15) as response:
-                if response.status == 200:
-                    html = await response.text()
+            for url in urls_to_try:
+                try:
+                    logger.info(f"Trying web scraping: {url}")
                     
-                    # Parse HTML for job listings
-                    from bs4 import BeautifulSoup
-                    soup = BeautifulSoup(html, 'html.parser')
-                    
-                    # Look for job cards
-                    job_cards = soup.find_all('div', class_='job-card') or \
-                               soup.find_all('div', class_='job-item') or \
-                               soup.find_all('article', class_='job-card') or \
-                               soup.find_all('div', {'data-testid': 'job-card'})
-                    
-                    for card in job_cards[:10]:
-                        try:
-                            job = self._parse_job_card(card)
-                            if job:
-                                jobs.append(job)
-                        except Exception as e:
-                            logger.warning(f"Error parsing job card: {str(e)}")
-                            continue
-                    
-                    logger.info(f"Web scraping found {len(jobs)} jobs for {category}")
+                    async with session.get(url, headers=self.headers, timeout=15) as response:
+                        if response.status == 200:
+                            html = await response.text()
+                            
+                            # Parse HTML for job listings
+                            from bs4 import BeautifulSoup
+                            soup = BeautifulSoup(html, 'html.parser')
+                            
+                            # Look for job cards with multiple selectors
+                            job_cards = soup.find_all('div', class_='job-card') or \
+                                       soup.find_all('div', class_='job-item') or \
+                                       soup.find_all('article', class_='job-card') or \
+                                       soup.find_all('div', {'data-testid': 'job-card'}) or \
+                                       soup.find_all('div', class_=re.compile(r'card|item|listing'))
+                            
+                            if not job_cards:
+                                # Try alternative selectors
+                                job_cards = soup.find_all('div', {'data-testid': re.compile(r'job|listing')})
+                            
+                            for card in job_cards[:15]:  # Increased limit
+                                try:
+                                    job = self._parse_job_card(card)
+                                    if job:
+                                        jobs.append(job)
+                                except Exception as e:
+                                    logger.warning(f"Error parsing job card: {str(e)}")
+                                    continue
+                            
+                            # If we found jobs, break
+                            if jobs:
+                                logger.info(f"Web scraping found {len(jobs)} jobs for {category}")
+                                break
+                                
+                except Exception as e:
+                    logger.warning(f"Error scraping {url}: {str(e)}")
+                    continue
                     
         except Exception as e:
             logger.warning(f"Web scraping fallback failed: {str(e)}")
