@@ -42,17 +42,23 @@ class JobSearcher:
         # Load environment variables
         load_dotenv()
         
+        # Load credentials
+        self.credentials = self._load_credentials()
+        
         self.config = config or {
             'search': {
-                'keywords': os.getenv('PRIMARY_SKILLS', 'software engineer,developer,python').split(','),
-                'max_jobs': int(os.getenv('MAX_APPLICATIONS_PER_DAY', '20')),
-                'delay_between_requests': 5,
-                'remote_only': os.getenv('REMOTE_ONLY', 'true').lower() == 'true'
+                'keywords': self.credentials.get('skills', ['software engineer', 'developer', 'python']),
+                'max_jobs': self.credentials.get('search', {}).get('max_jobs_per_platform', 100),
+                'delay_between_requests': self.credentials.get('search', {}).get('search_delay', 2),
+                'remote_only': self.credentials.get('search', {}).get('remote_only', True),
+                'max_applications_per_day': self.credentials.get('search', {}).get('max_applications_per_day', 50),
+                'max_concurrent_applications': self.credentials.get('search', {}).get('max_concurrent_applications', 10)
             },
             'credentials': {
                 'linkedin': {
-                    'email': os.getenv('LINKEDIN_EMAIL'),
-                    'password': os.getenv('LINKEDIN_PASSWORD')
+                    'email': self.credentials.get('linkedin', {}).get('email'),
+                    'password': self.credentials.get('linkedin', {}).get('password'),
+                    'enabled': self.credentials.get('linkedin', {}).get('enabled', False)
                 }
             }
         }
@@ -61,24 +67,46 @@ class JobSearcher:
         self.logger_instance = logger_instance
         
         # Initialize scrapers with configuration
-        self.scrapers = [
-            # International platforms
+        self.scrapers = []
+        
+        # Add scrapers based on configuration
+        if (self.credentials.get('linkedin', {}).get('enabled') and 
+            self.credentials.get('linkedin', {}).get('email')):
+            self.scrapers.append(LinkedInScraper(self.config))
+            logger.info("✅ LinkedIn scraper enabled with credentials")
+        else:
+            logger.warning("⚠️ LinkedIn scraper disabled - missing credentials")
+        
+        # Always add these scrapers (they don't need credentials)
+        self.scrapers.extend([
             WeWorkRemotelyScraper(self.config),
             RemotiveScraper(self.config),
             AngelListScraper(self.config),
             HackerNewsScraper(self.config),
-            
-            # Brazilian platforms
             InfoJobsScraper(self.config),
             CathoScraper(self.config),
-            
-            # LinkedIn (requires credentials)
-            LinkedInScraper(self.config),
-        ]
+        ])
+        
+        logger.info(f"🚀 Initialized {len(self.scrapers)} scrapers for maximum job discovery")
 
+    def _load_credentials(self) -> Dict:
+        """Load credentials from credentials.yaml file."""
+        try:
+            import yaml
+            credentials_path = "config/credentials.yaml"
+            if os.path.exists(credentials_path):
+                with open(credentials_path, 'r') as f:
+                    return yaml.safe_load(f)
+            else:
+                logger.warning(f"Credentials file not found: {credentials_path}")
+                return {}
+        except Exception as e:
+            logger.error(f"Error loading credentials: {e}")
+            return {}
+    
     async def search(self, keywords: Optional[List[str]] = None) -> List[JobPosting]:
         """
-        Search for jobs across all platforms.
+        Search for jobs across all platforms with maximum efficiency.
         
         Args:
             keywords: Optional list of keywords to search for. If not provided, uses config keywords.
@@ -93,29 +121,33 @@ class JobSearcher:
             # Try to get keywords from config
             if 'personal' in self.config and 'skills' in self.config['personal']:
                 search_keywords = self.config['personal']['skills']
+            elif 'search' in self.config and 'keywords' in self.config['search']:
+                search_keywords = self.config['search']['keywords']
             else:
                 search_keywords = ['software engineer', 'developer', 'python', 'react']
             
         all_jobs = []
         
         try:
-            logger.info(f"Starting job search with keywords: {', '.join(search_keywords)}")
+            logger.info(f"🚀 Starting MAXIMUM job search with keywords: {', '.join(search_keywords)}")
+            logger.info(f"📊 Target: {self.config.get('search', {}).get('max_jobs', 100)} jobs per platform")
+            logger.info(f"⚡ Max concurrent applications: {self.config.get('search', {}).get('max_concurrent_applications', 10)}")
             
-            # Create tasks for each scraper
+            # Create tasks for each scraper with optimized concurrency
             tasks = []
             for scraper in self.scrapers:
-                logger.info(f"Initializing search on {scraper.__class__.__name__}")
+                logger.info(f"🔄 Initializing search on {scraper.__class__.__name__}")
                 task = asyncio.create_task(self._search_with_logging(scraper, search_keywords))
                 tasks.append(task)
             
-            # Wait for all scrapers to complete
+            # Wait for all scrapers to complete with timeout
             results = await asyncio.gather(*tasks, return_exceptions=True)
             
-            # Process results
+            # Process results and optimize job list
             for scraper, result in zip(self.scrapers, results):
                 platform = scraper.__class__.__name__
                 if isinstance(result, Exception):
-                    logger.error(f"Error in {platform}: {str(result)}")
+                    logger.error(f"❌ Error in {platform}: {str(result)}")
                     # Log the error to the application logger
                     if self.logger_instance:
                         self.logger_instance.log_job_search(
@@ -128,36 +160,54 @@ class JobSearcher:
                     continue
                     
                 if isinstance(result, list):
-                    logger.info(f"\nResults from {platform}:")
+                    logger.info(f"\n✅ Results from {platform}:")
                     logger.info("=" * 50)
                     
-                    # Convert each job to simplified format
-                    for job in result:
+                    # Convert each job to simplified format and limit per platform
+                    platform_jobs = []
+                    max_jobs = self.config.get('search', {}).get('max_jobs', 100)
+                    for job in result[:max_jobs]:
                         simplified_job = JobPosting(
                             title=job.title,
                             description=job.description,
                             email=job.email,
                             url=job.url
                         )
-                        all_jobs.append(simplified_job)
+                        platform_jobs.append(simplified_job)
                         
-                        # Log job details
-                        logger.info(f"Title: {job.title}")
-                        logger.info(f"URL: {job.url}")
-                        logger.info("-" * 50)
+                        # Log job details (only first 5 for brevity)
+                        if len(platform_jobs) <= 5:
+                            logger.info(f"📋 {job.title}")
+                            logger.info(f"🔗 {job.url}")
+                    
+                    all_jobs.extend(platform_jobs)
+                    logger.info(f"📊 {platform}: {len(platform_jobs)} jobs (limited to {max_jobs})")
             
-            logger.info(f"\nSearch Summary:")
-            logger.info("=" * 50)
-            logger.info(f"Total jobs found: {len(all_jobs)}")
+            # Remove duplicates based on URL
+            unique_jobs = []
+            seen_urls = set()
+            for job in all_jobs:
+                if job.url not in seen_urls:
+                    unique_jobs.append(job)
+                    seen_urls.add(job.url)
+            
+            logger.info(f"\n🎯 SEARCH SUMMARY:")
+            logger.info("=" * 60)
+            logger.info(f"📊 Total unique jobs found: {len(unique_jobs)}")
+            logger.info(f"🎯 Target applications per day: {self.config.get('search', {}).get('max_applications_per_day', 50)}")
+            logger.info(f"⚡ Max concurrent applications: {self.config.get('search', {}).get('max_concurrent_applications', 10)}")
+            
+            # Platform breakdown
             for scraper in self.scrapers:
                 platform = scraper.__class__.__name__
-                platform_jobs = [j for j in all_jobs if platform.lower() in j.url.lower()]
-                logger.info(f"{platform}: {len(platform_jobs)} jobs")
+                platform_jobs = [j for j in unique_jobs if platform.lower() in j.url.lower()]
+                if platform_jobs:
+                    logger.info(f"   {platform}: {len(platform_jobs)} jobs")
             
-            return all_jobs
+            return unique_jobs
             
         except Exception as e:
-            logger.error(f"Error searching jobs: {str(e)}")
+            logger.error(f"❌ Error searching jobs: {str(e)}")
             return []
     
     async def _search_with_logging(self, scraper, keywords: List[str]) -> List[JobPosting]:

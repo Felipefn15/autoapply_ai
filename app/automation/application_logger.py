@@ -4,23 +4,24 @@ Comprehensive logging system for job searches and applications
 """
 import json
 import os
+import time
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Any
-from dataclasses import dataclass, asdict
+from typing import Dict, List, Optional, Set
 from enum import Enum
+from dataclasses import dataclass
+import hashlib
 
 from loguru import logger
 
 class ApplicationStatus(Enum):
-    """Application status enumeration."""
+    """Application status enum."""
     PENDING = "pending"
     APPLIED = "applied"
     FAILED = "failed"
     SKIPPED = "skipped"
-    INTERVIEW = "interview"
-    REJECTED = "rejected"
-    ACCEPTED = "accepted"
+    DUPLICATE = "duplicate"  # New status for duplicate jobs
+    ALREADY_APPLIED = "already_applied"  # New status for previously applied jobs
 
 @dataclass
 class JobSearchLog:
@@ -68,481 +69,332 @@ class SessionLog:
     warnings: List[str]
 
 class ApplicationLogger:
-    """Comprehensive application logger."""
+    """Application logger for tracking job applications."""
     
-    def __init__(self, log_dir: str = "data/logs"):
+    def __init__(self):
         """Initialize the application logger."""
-        self.log_dir = Path(log_dir)
-        self.log_dir.mkdir(parents=True, exist_ok=True)
+        self.session_id = None
+        self.session_start_time = None
+        self.search_logs: List[JobSearchLog] = []
+        self.application_logs: List[JobApplicationLog] = []
+        self.session_log = None
         
-        # Create subdirectories
-        (self.log_dir / "sessions").mkdir(exist_ok=True)
-        (self.log_dir / "searches").mkdir(exist_ok=True)
-        (self.log_dir / "applications").mkdir(exist_ok=True)
-        (self.log_dir / "reports").mkdir(exist_ok=True)
+        # Anti-duplication system
+        self.applied_jobs: Set[str] = set()  # Set of job hashes already applied to
+        self.job_history: Dict[str, Dict] = {}  # Job history with details
+        self.duplicate_count = 0
+        self.already_applied_count = 0
         
-        self.current_session = None
-        self.session_logs = []
-        self.search_logs = []
-        self.application_logs = []
-        
-    def start_session(self, session_id: Optional[str] = None) -> str:
-        """Start a new logging session."""
-        if not session_id:
-            session_id = f"session_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-        
-        self.current_session = session_id
-        self.session_logs = []
-        self.search_logs = []
-        self.application_logs = []
-        
-        logger.info(f"🚀 Started new application session: {session_id}")
-        return session_id
+        # Load existing application history
+        self._load_application_history()
+    
+    def start_session(self) -> str:
+        """Start a new application session."""
+        try:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            self.session_id = f"session_{timestamp}"
+            self.session_start_time = datetime.now()
+            
+            # Reset session-specific counters
+            self.duplicate_count = 0
+            self.already_applied_count = 0
+            
+            logger.info(f"🚀 Started new application session: {self.session_id}")
+            return self.session_id
+            
+        except Exception as e:
+            logger.error(f"❌ Error starting session: {str(e)}")
+            return "error_session"
     
     def log_job_search(self, platform: str, keywords: List[str], jobs_found: int, 
-                      search_duration: float, errors: List[str] = None) -> None:
-        """Log a job search operation."""
-        search_log = JobSearchLog(
-            timestamp=datetime.now().isoformat(),
-            platform=platform,
-            keywords=keywords,
-            jobs_found=jobs_found,
-            search_duration=search_duration,
-            errors=errors or [],
-            success=len(errors or []) == 0
-        )
+                       search_duration: float, errors: List[str] = None, success: bool = True) -> str:
+        """
+        Log a job search operation.
         
-        self.search_logs.append(search_log)
-        
-        # Log to console
-        if search_log.success:
-            logger.success(f"✅ {platform}: Found {jobs_found} jobs in {search_duration:.2f}s")
-        else:
-            logger.warning(f"⚠️ {platform}: Found {jobs_found} jobs with {len(errors)} errors")
-            for error in errors:
-                logger.error(f"   Error: {error}")
-    
-    def log_job_application(self, job_title: str, company: str, platform: str, 
-                          job_url: str, application_method: str, status: ApplicationStatus,
-                          match_score: float, cover_letter_length: int = 0,
-                          error_message: Optional[str] = None, 
-                          application_duration: float = 0.0) -> None:
-        """Log a job application operation."""
-        application_log = JobApplicationLog(
-            timestamp=datetime.now().isoformat(),
-            job_title=job_title,
-            company=company,
-            platform=platform,
-            job_url=job_url,
-            application_method=application_method,
-            status=status,
-            match_score=match_score,
-            cover_letter_length=cover_letter_length,
-            error_message=error_message,
-            application_duration=application_duration,
-            success=status in [ApplicationStatus.APPLIED, ApplicationStatus.INTERVIEW, ApplicationStatus.ACCEPTED]
-        )
-        
-        self.application_logs.append(application_log)
-        
-        # Log to console
-        status_emoji = {
-            ApplicationStatus.APPLIED: "✅",
-            ApplicationStatus.FAILED: "❌",
-            ApplicationStatus.SKIPPED: "⏭️",
-            ApplicationStatus.INTERVIEW: "🎯",
-            ApplicationStatus.REJECTED: "❌",
-            ApplicationStatus.ACCEPTED: "🎉"
-        }
-        
-        emoji = status_emoji.get(status, "❓")
-        logger.info(f"{emoji} {job_title} at {company} - {status.value} (Score: {match_score:.1%})")
-        
-        if error_message:
-            logger.error(f"   Error: {error_message}")
-    
-    def end_session(self) -> SessionLog:
-        """End the current session and generate summary."""
-        if not self.current_session:
-            raise ValueError("No active session to end")
-        
-        end_time = datetime.now().isoformat()
-        
-        # Calculate session statistics
-        total_jobs_found = sum(log.jobs_found for log in self.search_logs)
-        total_applications = len(self.application_logs)
-        successful_applications = len([log for log in self.application_logs if log.success])
-        failed_applications = len([log for log in self.application_logs if log.status == ApplicationStatus.FAILED])
-        skipped_applications = len([log for log in self.application_logs if log.status == ApplicationStatus.SKIPPED])
-        
-        success_rate = (successful_applications / total_applications * 100) if total_applications > 0 else 0
-        
-        platforms_searched = list(set(log.platform for log in self.search_logs))
-        
-        # Collect errors and warnings
-        errors = []
-        warnings = []
-        
-        for search_log in self.search_logs:
-            errors.extend(search_log.errors)
-        
-        for app_log in self.application_logs:
-            if app_log.error_message:
-                errors.append(app_log.error_message)
-        
-        session_log = SessionLog(
-            session_id=self.current_session,
-            start_time=self.search_logs[0].timestamp if self.search_logs else end_time,
-            end_time=end_time,
-            total_jobs_found=total_jobs_found,
-            total_applications=total_applications,
-            successful_applications=successful_applications,
-            failed_applications=failed_applications,
-            skipped_applications=skipped_applications,
-            success_rate=success_rate,
-            platforms_searched=platforms_searched,
-            search_logs=self.search_logs,
-            application_logs=self.application_logs,
-            errors=errors,
-            warnings=warnings
-        )
-        
-        # Save session log
-        self._save_session_log(session_log)
-        
-        # Generate and save reports
-        self._generate_session_report(session_log)
-        
-        # Generate CSV reports
-        csv_report_path = self.generate_csv_report()
-        summary_csv_path = self.generate_summary_csv()
-        
-        # Log summary to console
-        logger.info(f"\n📊 SESSION SUMMARY: {self.current_session}")
-        logger.info("=" * 60)
-        logger.info(f"Total jobs found: {total_jobs_found}")
-        logger.info(f"Total applications: {total_applications}")
-        logger.info(f"Successful applications: {successful_applications}")
-        logger.info(f"Failed applications: {failed_applications}")
-        logger.info(f"Skipped applications: {skipped_applications}")
-        logger.info(f"Success rate: {success_rate:.1f}%")
-        logger.info(f"Platforms searched: {', '.join(platforms_searched)}")
-        logger.info(f"📊 CSV Reports:")
-        logger.info(f"   📄 Detailed report: {csv_report_path}")
-        logger.info(f"   📈 Summary report: {summary_csv_path}")
-        
-        return session_log
-    
-    def _save_session_log(self, session_log: SessionLog) -> None:
-        """Save session log to file."""
-        session_file = self.log_dir / "sessions" / f"{session_log.session_id}.json"
-        
-        # Convert to dict for JSON serialization
-        session_dict = asdict(session_log)
-        
-        # Convert enums to strings
-        for app_log in session_dict['application_logs']:
-            app_log['status'] = app_log['status'].value
-        
-        with open(session_file, 'w', encoding='utf-8') as f:
-            json.dump(session_dict, f, indent=2, ensure_ascii=False)
-        
-        logger.info(f"💾 Session log saved: {session_file}")
-    
-    def _generate_session_report(self, session_log: SessionLog) -> None:
-        """Generate a human-readable session report."""
-        report_file = self.log_dir / "reports" / f"{session_log.session_id}_report.txt"
-        
-        with open(report_file, 'w', encoding='utf-8') as f:
-            f.write("AUTOAPPLY.AI - SESSION REPORT\n")
-            f.write("=" * 50 + "\n\n")
+        Args:
+            platform: Job platform/source
+            keywords: List of keywords used for the search
+            jobs_found: Number of jobs found
+            search_duration: Duration of the search in seconds
+            errors: List of errors encountered during search
+            success: Boolean indicating if the search was successful
             
-            f.write(f"Session ID: {session_log.session_id}\n")
-            f.write(f"Start Time: {session_log.start_time}\n")
-            f.write(f"End Time: {session_log.end_time}\n\n")
-            
-            f.write("SUMMARY\n")
-            f.write("-" * 20 + "\n")
-            f.write(f"Total jobs found: {session_log.total_jobs_found}\n")
-            f.write(f"Total applications: {session_log.total_applications}\n")
-            f.write(f"Successful applications: {session_log.successful_applications}\n")
-            f.write(f"Failed applications: {session_log.failed_applications}\n")
-            f.write(f"Skipped applications: {session_log.skipped_applications}\n")
-            f.write(f"Success rate: {session_log.success_rate:.1f}%\n")
-            f.write(f"Platforms searched: {', '.join(session_log.platforms_searched)}\n\n")
-            
-            f.write("JOB SEARCHES\n")
-            f.write("-" * 20 + "\n")
-            for search_log in session_log.search_logs:
-                f.write(f"Platform: {search_log.platform}\n")
-                f.write(f"  Keywords: {', '.join(search_log.keywords)}\n")
-                f.write(f"  Jobs found: {search_log.jobs_found}\n")
-                f.write(f"  Duration: {search_log.search_duration:.2f}s\n")
-                f.write(f"  Success: {search_log.success}\n")
-                if search_log.errors:
-                    f.write(f"  Errors: {len(search_log.errors)}\n")
-                    for error in search_log.errors:
-                        f.write(f"    - {error}\n")
-                f.write("\n")
-            
-            f.write("JOB APPLICATIONS\n")
-            f.write("-" * 20 + "\n")
-            for app_log in session_log.application_logs:
-                f.write(f"Job: {app_log.job_title}\n")
-                f.write(f"  Company: {app_log.company}\n")
-                f.write(f"  Platform: {app_log.platform}\n")
-                f.write(f"  Method: {app_log.application_method}\n")
-                f.write(f"  Status: {app_log.status.value}\n")
-                f.write(f"  Match Score: {app_log.match_score:.1%}\n")
-                f.write(f"  Duration: {app_log.application_duration:.2f}s\n")
-                if app_log.error_message:
-                    f.write(f"  Error: {app_log.error_message}\n")
-                f.write("\n")
-            
-            if session_log.errors:
-                f.write("ERRORS\n")
-                f.write("-" * 20 + "\n")
-                for error in session_log.errors:
-                    f.write(f"- {error}\n")
-                f.write("\n")
-        
-        logger.info(f"📄 Session report generated: {report_file}")
+        Returns:
+            str: Search ID
+        """
+        try:
+            search_id = f"search_{int(time.time())}_{len(self.search_logs)}"
+            search_log = JobSearchLog(
+                timestamp=datetime.now().isoformat(),
+                platform=platform,
+                keywords=keywords,
+                jobs_found=jobs_found,
+                search_duration=search_duration,
+                errors=errors if errors else [],
+                success=success
+            )
+            self.search_logs.append(search_log)
+            logger.info(f"📊 Logged search: {platform} - {len(keywords)} keywords")
+            return search_id
+        except Exception as e:
+            logger.error(f"❌ Error logging job search: {str(e)}")
+            return f"error_search_{int(time.time())}"
     
-    def get_recent_sessions(self, limit: int = 10) -> List[SessionLog]:
-        """Get recent session logs."""
-        session_files = sorted(
-            (self.log_dir / "sessions").glob("*.json"),
-            key=lambda x: x.stat().st_mtime,
-            reverse=True
-        )[:limit]
-        
-        sessions = []
-        for session_file in session_files:
-            try:
-                with open(session_file, 'r', encoding='utf-8') as f:
-                    session_dict = json.load(f)
+    def _load_application_history(self):
+        """Load existing application history to avoid duplicates."""
+        try:
+            history_file = Path("data/logs/application_history.json")
+            if history_file.exists():
+                with open(history_file, 'r', encoding='utf-8') as f:
+                    history = json.load(f)
+                    self.applied_jobs = set(history.get('applied_jobs', []))
+                    self.job_history = history.get('job_history', {})
+                    logger.info(f"📚 Loaded {len(self.applied_jobs)} previous applications from history")
+        except Exception as e:
+            logger.warning(f"⚠️ Could not load application history: {str(e)}")
+    
+    def _save_application_history(self):
+        """Save current application history to avoid future duplicates."""
+        try:
+            history_file = Path("data/logs/application_history.json")
+            history_file.parent.mkdir(parents=True, exist_ok=True)
+            
+            history = {
+                'applied_jobs': list(self.applied_jobs),
+                'job_history': self.job_history,
+                'last_updated': datetime.now().isoformat()
+            }
+            
+            with open(history_file, 'w', encoding='utf-8') as f:
+                json.dump(history, f, indent=2, ensure_ascii=False)
                 
-                # Convert status strings back to enums
-                for app_log in session_dict['application_logs']:
-                    app_log['status'] = ApplicationStatus(app_log['status'])
-                
-                # Reconstruct SessionLog object
-                session_log = SessionLog(**session_dict)
-                sessions.append(session_log)
-                
-            except Exception as e:
-                logger.error(f"Error loading session {session_file}: {e}")
-        
-        return sessions
+            logger.info(f"💾 Application history saved with {len(self.applied_jobs)} jobs")
+        except Exception as e:
+            logger.error(f"❌ Error saving application history: {str(e)}")
     
-    def generate_analytics_report(self, days: int = 30) -> Dict[str, Any]:
-        """Generate analytics report for the last N days."""
-        sessions = self.get_recent_sessions(limit=100)  # Get more sessions for analysis
-        
-        # Filter sessions by date
-        cutoff_date = datetime.now().timestamp() - (days * 24 * 60 * 60)
-        recent_sessions = [
-            s for s in sessions 
-            if datetime.fromisoformat(s.start_time).timestamp() > cutoff_date
-        ]
-        
-        if not recent_sessions:
-            return {"error": "No sessions found in the specified period"}
-        
-        # Calculate analytics
-        total_sessions = len(recent_sessions)
-        total_jobs_found = sum(s.total_jobs_found for s in recent_sessions)
-        total_applications = sum(s.total_applications for s in recent_sessions)
-        total_successful = sum(s.successful_applications for s in recent_sessions)
-        
-        avg_success_rate = sum(s.success_rate for s in recent_sessions) / total_sessions
-        
-        # Platform statistics
-        platform_stats = {}
-        for session in recent_sessions:
-            for search_log in session.search_logs:
-                platform = search_log.platform
-                if platform not in platform_stats:
-                    platform_stats[platform] = {
-                        'searches': 0,
-                        'jobs_found': 0,
-                        'success_rate': 0
-                    }
-                platform_stats[platform]['searches'] += 1
-                platform_stats[platform]['jobs_found'] += search_log.jobs_found
-        
-        # Calculate platform success rates
-        for platform in platform_stats:
-            platform_apps = [
-                app for session in recent_sessions
-                for app in session.application_logs
-                if app.platform == platform
+    def _generate_job_hash(self, job_data: Dict) -> str:
+        """Generate a unique hash for a job to identify duplicates."""
+        try:
+            # Create a unique identifier based on key job attributes
+            key_fields = [
+                job_data.get('title', '').lower().strip(),
+                job_data.get('company', '').lower().strip(),
+                job_data.get('url', '').strip()
             ]
-            if platform_apps:
-                success_rate = len([app for app in platform_apps if app.success]) / len(platform_apps) * 100
-                platform_stats[platform]['success_rate'] = success_rate
+            
+            # Clean and normalize fields
+            cleaned_fields = [field.replace(' ', '').replace('-', '').replace('_', '') for field in key_fields if field]
+            
+            # Generate hash
+            job_string = '|'.join(cleaned_fields)
+            return hashlib.md5(job_string.encode('utf-8')).hexdigest()
+        except Exception as e:
+            logger.error(f"❌ Error generating job hash: {str(e)}")
+            # Fallback to URL hash
+            return hashlib.md5(job_data.get('url', '').encode('utf-8')).hexdigest()
+    
+    def _is_duplicate_job(self, job_data: Dict) -> tuple[bool, Optional[str], Optional[str]]:
+        """
+        Check if a job is a duplicate or already applied to.
         
-        analytics = {
-            'period_days': days,
-            'total_sessions': total_sessions,
-            'total_jobs_found': total_jobs_found,
-            'total_applications': total_applications,
-            'total_successful_applications': total_successful,
-            'average_success_rate': avg_success_rate,
-            'platform_statistics': platform_stats,
-            'recent_sessions': [
-                {
-                    'session_id': s.session_id,
-                    'date': s.start_time[:10],
-                    'jobs_found': s.total_jobs_found,
-                    'applications': s.total_applications,
-                    'success_rate': s.success_rate
+        Returns:
+            tuple: (is_duplicate, duplicate_type, existing_job_hash)
+        """
+        job_hash = self._generate_job_hash(job_data)
+        
+        # Check if already applied to this exact job
+        if job_hash in self.applied_jobs:
+            return True, "already_applied", job_hash
+        
+        # Check for similar jobs (same company + similar title)
+        company = job_data.get('company', 'Unknown').lower().strip()
+        title = job_data.get('title', '').lower().strip()
+        
+        for existing_hash, existing_job in self.job_history.items():
+            existing_company = existing_job.get('company', 'Unknown').lower().strip()
+            existing_title = existing_job.get('title', '').lower().strip()
+            
+            # Check if same company and similar title
+            if (company and existing_company and company == existing_company and
+                title and existing_title and self._similar_titles(title, existing_title)):
+                return True, "duplicate", existing_hash
+        
+        return False, None, None
+    
+    def _similar_titles(self, title1: str, title2: str) -> bool:
+        """Check if two job titles are similar (potential duplicates)."""
+        try:
+            # Normalize titles
+            t1 = title1.lower().replace('-', ' ').replace('_', ' ').strip()
+            t2 = title2.lower().replace('-', ' ').replace('_', ' ').strip()
+            
+            # Split into words
+            words1 = set(t1.split())
+            words2 = set(t2.split())
+            
+            # Calculate similarity
+            if not words1 or not words2:
+                return False
+            
+            intersection = words1.intersection(words2)
+            union = words1.union(words2)
+            
+            similarity = len(intersection) / len(union)
+            
+            # Consider similar if >70% similarity
+            return similarity > 0.7
+        except Exception:
+            return False
+    
+    def log_job_application(self, job_data: Dict, status: ApplicationStatus, 
+                           match_score: float = 0.0, error: str = None, 
+                           platform: str = "Unknown") -> str:
+        """
+        Log a job application with anti-duplication check.
+        
+        Args:
+            job_data: Job information dictionary
+            status: Application status
+            match_score: Job match score
+            error: Error message if any
+            platform: Job platform/source
+            
+        Returns:
+            str: Application ID
+        """
+        try:
+            # Check for duplicates before logging
+            is_duplicate, duplicate_type, existing_hash = self._is_duplicate_job(job_data)
+            
+            if is_duplicate:
+                if duplicate_type == "already_applied":
+                    status = ApplicationStatus.ALREADY_APPLIED
+                    self.already_applied_count += 1
+                    logger.warning(f"⚠️ Already applied to: {job_data.get('title', 'Unknown')} at {job_data.get('company', 'Unknown')}")
+                else:
+                    status = ApplicationStatus.DUPLICATE
+                    self.duplicate_count += 1
+                    logger.warning(f"⚠️ Duplicate job detected: {job_data.get('title', 'Unknown')} at {job_data.get('company', 'Unknown')}")
+            
+            # Generate application ID
+            application_id = f"app_{int(time.time())}_{len(self.application_logs)}"
+            
+            # Create application log with correct structure
+            application_log = JobApplicationLog(
+                timestamp=datetime.now().isoformat(),
+                job_title=job_data.get('title', 'Unknown'),
+                company=job_data.get('company', 'Unknown'),
+                platform=platform,
+                job_url=job_data.get('url', ''),
+                application_method="AutoApply.AI",
+                status=status,
+                match_score=match_score,
+                cover_letter_length=0,
+                error_message=error,
+                application_duration=0.0,
+                success=(status == ApplicationStatus.APPLIED)
+            )
+            
+            self.application_logs.append(application_log)
+            
+            # If this is a new successful application, add to history
+            if status == ApplicationStatus.APPLIED and not is_duplicate:
+                job_hash = self._generate_job_hash(job_data)
+                self.applied_jobs.add(job_hash)
+                self.job_history[job_hash] = {
+                    'title': job_data.get('title', ''),
+                    'company': job_data.get('company', ''),
+                    'url': job_data.get('url', ''),
+                    'platform': platform,
+                    'applied_at': datetime.now().isoformat(),
+                    'match_score': match_score
                 }
-                for s in recent_sessions[:10]  # Last 10 sessions
-            ]
-        }
-        
-        # Save analytics report
-        analytics_file = self.log_dir / "reports" / f"analytics_{days}days.json"
-        with open(analytics_file, 'w', encoding='utf-8') as f:
-            json.dump(analytics, f, indent=2, ensure_ascii=False)
-        
-        logger.info(f"📊 Analytics report generated: {analytics_file}")
-        return analytics 
+                
+                # Save history after each new application
+                self._save_application_history()
+            
+            logger.info(f"📝 Logged application: {job_data.get('title', 'Unknown')} - {status.value}")
+            return application_id
+            
+        except Exception as e:
+            logger.error(f"❌ Error logging job application: {str(e)}")
+            return f"error_{int(time.time())}" 
 
-    def generate_csv_report(self, output_path: str = None) -> str:
-        """Generate a comprehensive CSV report with all job searches and applications."""
-        if output_path is None:
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            output_path = f"data/logs/autoapply_report_{timestamp}.csv"
+    def end_session(self) -> Dict:
+        """End the current session and generate final report."""
+        if not self.session_id:
+            logger.warning("⚠️ No active session to end")
+            return {}
         
-        output_path = Path(output_path)
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        
-        import csv
-        
-        with open(output_path, 'w', newline='', encoding='utf-8') as csvfile:
-            writer = csv.writer(csvfile)
+        try:
+            end_time = datetime.now()
+            session_duration = (end_time - self.session_start_time).total_seconds()
             
-            # Header
-            writer.writerow([
-                'Data/Hora',
-                'Tipo',
-                'Plataforma',
-                'Título da Vaga',
-                'Empresa',
-                'URL da Vaga',
-                'Método de Aplicação',
-                'Status',
-                'Score de Match',
-                'Duração (s)',
-                'Erro',
-                'Detalhes'
-            ])
+            # Calculate statistics including duplicates
+            total_applications = len(self.application_logs)
+            successful_applications = len([app for app in self.application_logs if app.status == ApplicationStatus.APPLIED])
+            failed_applications = len([app for app in self.application_logs if app.status == ApplicationStatus.FAILED])
+            skipped_applications = len([app for app in self.application_logs if app.status == ApplicationStatus.SKIPPED])
+            duplicate_applications = len([app for app in self.application_logs if app.status == ApplicationStatus.DUPLICATE])
+            already_applied = len([app for app in self.application_logs if app.status == ApplicationStatus.ALREADY_APPLIED])
             
-            # Write search logs
-            for search_log in self.search_logs:
-                writer.writerow([
-                    search_log.timestamp,
-                    'BUSCA',
-                    search_log.platform,
-                    f"Busca por: {', '.join(search_log.keywords)}",
-                    'N/A',
-                    'N/A',
-                    'N/A',
-                    'SUCESSO' if not search_log.errors else 'ERRO',
-                    'N/A',
-                    f"{search_log.search_duration:.2f}",
-                    '; '.join(search_log.errors) if search_log.errors else '',
-                    f"Encontradas: {search_log.jobs_found} vagas"
-                ])
+            # Calculate success rate excluding duplicates and already applied
+            effective_applications = total_applications - duplicate_applications - already_applied
+            success_rate = (successful_applications / effective_applications * 100) if effective_applications > 0 else 0
             
-            # Write application logs
-            for app_log in self.application_logs:
-                writer.writerow([
-                    app_log.timestamp,
-                    'CANDIDATURA',
-                    app_log.platform,
-                    app_log.job_title,
-                    app_log.company,
-                    app_log.job_url,
-                    app_log.application_method,
-                    app_log.status.value.upper(),
-                    f"{app_log.match_score:.1%}",
-                    f"{app_log.application_duration:.2f}",
-                    app_log.error_message if app_log.error_message else '',
-                    f"Cover letter: {app_log.cover_letter_length} chars" if app_log.cover_letter_length > 0 else 'N/A'
-                ])
-        
-        logger.info(f"📊 Relatório CSV gerado: {output_path}")
-        return str(output_path)
-    
-    def generate_summary_csv(self, output_path: str = None) -> str:
-        """Generate a summary CSV with key metrics."""
-        if output_path is None:
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            output_path = f"data/logs/autoapply_summary_{timestamp}.csv"
-        
-        output_path = Path(output_path)
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        
-        import csv
-        
-        # Calculate metrics
-        total_jobs_found = sum(log.jobs_found for log in self.search_logs)
-        total_applications = len(self.application_logs)
-        successful_applications = len([log for log in self.application_logs if log.success])
-        failed_applications = len([log for log in self.application_logs if log.status == ApplicationStatus.FAILED])
-        skipped_applications = len([log for log in self.application_logs if log.status == ApplicationStatus.SKIPPED])
-        
-        platforms_searched = list(set(log.platform for log in self.search_logs))
-        platforms_applied = list(set(log.platform for log in self.application_logs))
-        
-        with open(output_path, 'w', newline='', encoding='utf-8') as csvfile:
-            writer = csv.writer(csvfile)
+            # Get unique platforms
+            platforms = list(set([log.platform for log in self.search_logs]))
             
-            # Summary metrics
-            writer.writerow(['Métrica', 'Valor'])
-            writer.writerow(['Data/Hora Execução', datetime.now().strftime("%Y-%m-%d %H:%M:%S")])
-            writer.writerow(['Sessão ID', self.current_session])
-            writer.writerow(['Total Vagas Encontradas', total_jobs_found])
-            writer.writerow(['Total Candidaturas', total_applications])
-            writer.writerow(['Candidaturas Bem-sucedidas', successful_applications])
-            writer.writerow(['Candidaturas Falharam', failed_applications])
-            writer.writerow(['Candidaturas Puladas', skipped_applications])
-            writer.writerow(['Taxa de Sucesso', f"{(successful_applications/total_applications*100):.1f}%" if total_applications > 0 else "0%"])
-            writer.writerow(['Plataformas Buscadas', ', '.join(platforms_searched)])
-            writer.writerow(['Plataformas com Candidaturas', ', '.join(platforms_applied)])
+            # Create session log
+            self.session_log = SessionLog(
+                session_id=self.session_id,
+                start_time=self.session_start_time.isoformat(),
+                end_time=end_time.isoformat(),
+                total_jobs_found=sum(log.jobs_found for log in self.search_logs),
+                total_applications=total_applications,
+                successful_applications=successful_applications,
+                failed_applications=failed_applications,
+                skipped_applications=skipped_applications,
+                success_rate=success_rate,
+                platforms_searched=platforms,
+                search_logs=self.search_logs,
+                application_logs=self.application_logs,
+                errors=[],
+                warnings=[]
+            )
             
-            # Platform breakdown
-            writer.writerow([])
-            writer.writerow(['Plataforma', 'Vagas Encontradas', 'Candidaturas', 'Sucessos', 'Falhas'])
+            # Save session log
+            self._save_session_log()
             
-            platform_stats = {}
-            for search_log in self.search_logs:
-                platform = search_log.platform
-                if platform not in platform_stats:
-                    platform_stats[platform] = {'jobs': 0, 'applications': 0, 'successes': 0, 'failures': 0}
-                platform_stats[platform]['jobs'] += search_log.jobs_found
+            # Generate reports
+            self._generate_session_report()
             
-            for app_log in self.application_logs:
-                platform = app_log.platform
-                if platform not in platform_stats:
-                    platform_stats[platform] = {'jobs': 0, 'applications': 0, 'successes': 0, 'failures': 0}
-                platform_stats[platform]['applications'] += 1
-                if app_log.success:
-                    platform_stats[platform]['successes'] += 1
-                elif app_log.status == ApplicationStatus.FAILED:
-                    platform_stats[platform]['failures'] += 1
+            # Generate CSV reports
+            csv_report_path = self.generate_csv_report()
+            summary_csv_path = self.generate_summary_csv()
             
-            for platform, stats in platform_stats.items():
-                writer.writerow([
-                    platform,
-                    stats['jobs'],
-                    stats['applications'],
-                    stats['successes'],
-                    stats['failures']
-                ])
-        
-        logger.info(f"📈 Resumo CSV gerado: {output_path}")
-        return str(output_path) 
+            # Log final summary with anti-duplication stats
+            logger.info("")
+            logger.info("📊 SESSION SUMMARY: " + self.session_id)
+            logger.info("=" * 60)
+            logger.info(f"Total jobs found: {self.session_log.total_jobs_found}")
+            logger.info(f"Total applications: {total_applications}")
+            logger.info(f"✅ Successful applications: {successful_applications}")
+            logger.info(f"❌ Failed applications: {failed_applications}")
+            logger.info(f"⏭️ Skipped applications: {skipped_applications}")
+            logger.info(f"🔄 Duplicate jobs detected: {duplicate_applications}")
+            logger.info(f"📚 Already applied jobs: {already_applied}")
+            logger.info(f"📈 Effective success rate: {success_rate:.1f}%")
+            logger.info(f"🌐 Platforms searched: {', '.join(platforms)}")
+            logger.info("📊 CSV Reports:")
+            logger.info(f"   📄 Detailed report: {csv_report_path}")
+            logger.info(f"   📈 Summary report: {summary_csv_path}")
+            
+            # Save final application history
+            self._save_application_history()
+            
+            return self.session_log.__dict__
+            
+        except Exception as e:
+            logger.error(f"❌ Error ending session: {str(e)}")
+            return {} 

@@ -7,6 +7,7 @@ import asyncio
 import sys
 from pathlib import Path
 from datetime import datetime
+from typing import Dict
 
 from loguru import logger
 
@@ -40,7 +41,7 @@ async def main():
         logger.info("📊 2. Inicializando sistema de logging...")
         app_logger = ApplicationLogger()
         app_logger.start_session()
-        logger.info(f"   ✅ Sessão iniciada: {app_logger.current_session}")
+        logger.info(f"   ✅ Sessão iniciada: {app_logger.session_id}")
         
         # 3. Buscar vagas
         logger.info("🔍 3. Iniciando busca de vagas...")
@@ -75,73 +76,102 @@ async def main():
         logger.info(f"   📊 Vagas com match: {len(matches)}")
         
         if not matches:
-            logger.warning("   ⚠️ Nenhuma vaga com match encontrada")
+            logger.warning("   ⚠️ Nenhuma vaga com match encontrada!")
             return
         
-        # Mostrar top 5 matches
-        logger.info("\n🏆 TOP 5 VAGAS COM MELHOR MATCH:")
-        for i, match in enumerate(matches[:5], 1):
-            if isinstance(match, dict):
-                score = match.get('match_score', 0) * 100
-                job_title = match.get('title', 'Unknown')
-                job_url = match.get('url', 'N/A')
-            else:
-                score = match.score * 100
-                job_title = match.job.title
-                job_url = match.job.url
-            
-            logger.info(f"{i}. {job_title}")
-            logger.info(f"   Score: {score:.1f}%")
-            logger.info(f"   URL: {job_url}")
-            logger.info("")
-        
-        # 5. Aplicar para vagas
-        logger.info("📝 5. Aplicando para vagas...")
+        # 5. Aplicar para vagas (MAXIMIZAR APLICAÇÕES - SEM DUPLICATAS)
+        logger.info("\n📝 5. Aplicando para vagas (MÁXIMO DE APLICAÇÕES - SEM DUPLICATAS)...")
         applicator = ApplicatorManager(config)
-        applicator.start_session()
+        applicator.start_session()  # Start application session
+        
+        # Configurações para maximizar aplicações
+        max_applications = config.get('search', {}).get('max_applications_per_day', 50)
+        max_concurrent = config.get('search', {}).get('max_concurrent_applications', 10)
+        application_delay = config.get('search', {}).get('application_delay', 5)
+        
+        logger.info(f"   🎯 Meta de aplicações: {max_applications}")
+        logger.info(f"   ⚡ Aplicações concorrentes: {max_concurrent}")
+        logger.info(f"   ⏱️ Delay entre aplicações: {application_delay}s")
+        logger.info(f"   🚫 Sistema anti-duplicação: ATIVO")
+        
+        # Filtrar vagas únicas (sem duplicatas)
+        unique_matches = []
+        seen_jobs = set()
+        
+        for match in matches:
+            if isinstance(match, dict):
+                job_title = match.get('title', '')
+                company = match.get('company', 'Unknown')
+                url = match.get('url', '')
+            else:
+                job_title = getattr(match.job, 'title', '')
+                company = getattr(match.job, 'company', 'Unknown')
+                url = getattr(match.job, 'url', '')
+            
+            # Create unique identifier
+            job_id = f"{job_title}_{company}_{url}"
+            
+            if job_id not in seen_jobs:
+                seen_jobs.add(job_id)
+                unique_matches.append(match)
+        
+        logger.info(f"   🔍 Vagas únicas encontradas: {len(unique_matches)} (filtradas de {len(matches)})")
+        
+        if not unique_matches:
+            logger.warning("   ⚠️ Nenhuma vaga única encontrada após filtro de duplicatas!")
+            return
+        
+        # Aplicar para vagas únicas
+        applications_to_process = min(max_applications, len(unique_matches))
+        logger.info(f"   📋 Aplicando para {applications_to_process} vagas únicas...")
         
         successful_applications = 0
-        total_applications = min(len(matches), 5)  # Aplicar para no máximo 5 vagas
+        failed_applications = 0
+        duplicate_applications = 0
+        already_applied = 0
         
-        for i, match in enumerate(matches[:5], 1):
-            logger.info(f"\n📄 Aplicação {i}/{total_applications}")
+        # Processar em lotes para evitar sobrecarga
+        batch_size = max_concurrent
+        total_batches = (applications_to_process + batch_size - 1) // batch_size
+        
+        for i in range(0, applications_to_process, batch_size):
+            batch = unique_matches[i:i + batch_size]
+            batch_num = (i // batch_size) + 1
             
-            # Preparar dados da vaga
-            if isinstance(match, dict):
-                job_data = match
-                score = match.get('match_score', 0)
-            else:
-                job_data = {
-                    'title': match.job.title,
-                    'company': getattr(match.job, 'company', 'Unknown'),
-                    'platform': getattr(match.job, 'platform', 'Unknown'),
-                    'url': match.job.url,
-                    'description': match.job.description
-                }
-                score = match.score
+            logger.info(f"   🔄 Processando lote {batch_num}/{total_batches}")
             
-            logger.info(f"   Vaga: {job_data.get('title', 'Unknown')}")
-            logger.info(f"   Empresa: {job_data.get('company', 'Unknown')}")
-            logger.info(f"   Score: {score:.1%}")
-            logger.info(f"   URL: {job_data.get('url', 'N/A')}")
+            # Processar lote em paralelo
+            batch_tasks = []
+            for j, match in enumerate(batch, 1):
+                task = asyncio.create_task(_apply_to_job(match, i + j, app_logger))
+                batch_tasks.append(task)
             
-            # Simular aplicação
-            logger.info("   🔄 Simulando aplicação...")
-            await asyncio.sleep(1)  # Simular tempo de aplicação
+            # Aguardar conclusão do lote
+            batch_results = await asyncio.gather(*batch_tasks, return_exceptions=True)
             
-            # Log da tentativa de aplicação
-            app_logger.log_job_application(
-                job_title=job_data.get('title', 'Unknown'),
-                company=job_data.get('company', 'Unknown'),
-                platform=job_data.get('platform', 'Unknown'),
-                job_url=job_data.get('url', 'N/A'),
-                application_method="website",
-                status=ApplicationStatus.APPLIED,
-                match_score=score
-            )
+            # Contar resultados
+            for result in batch_results:
+                if isinstance(result, dict):
+                    if result.get('status') == 'applied':
+                        successful_applications += 1
+                    elif result.get('status') == 'duplicate':
+                        duplicate_applications += 1
+                    elif result.get('status') == 'already_applied':
+                        already_applied += 1
+                    else:
+                        failed_applications += 1
             
-            logger.info("   ✅ Aplicação simulada com sucesso")
-            successful_applications += 1
+            # Aguardar antes do próximo lote
+            if i + batch_size < applications_to_process:
+                logger.info(f"   ⏱️ Aguardando {application_delay}s antes do próximo lote...")
+                await asyncio.sleep(application_delay)
+        
+        # Resumo final
+        logger.info(f"   ✅ Aplicações bem-sucedidas: {successful_applications}")
+        logger.info(f"   ❌ Aplicações falharam: {failed_applications}")
+        logger.info(f"   🔄 Vagas duplicadas detectadas: {duplicate_applications}")
+        logger.info(f"   📚 Já aplicado anteriormente: {already_applied}")
+        logger.info(f"   📈 Taxa de sucesso efetiva: {(successful_applications/(successful_applications+failed_applications)*100):.1f}%")
         
         # 6. Finalizar sessão e gerar relatório
         logger.info("\n📊 6. Finalizando sessão e gerando relatório...")
@@ -159,19 +189,87 @@ async def main():
         logger.info(f"🎯 Vagas com match: {len(matches)}")
         logger.info(f"📝 Aplicações realizadas: {successful_applications}")
         logger.info(f"✅ Aplicações bem-sucedidas: {successful_applications}")
-        logger.info(f"❌ Aplicações falharam: 0")
-        logger.info(f"📈 Taxa de sucesso: 100.0%")
+        logger.info(f"❌ Aplicações falharam: {failed_applications}")
+        logger.info(f"📈 Taxa de sucesso: {(successful_applications/(successful_applications+failed_applications)*100):.1f}%")
         logger.info(f"📁 Logs salvos em: data/logs/")
         logger.info(f"📄 Relatório: data/logs/reports/session_{timestamp}_report.txt")
-        logger.info(f"📊 CSV Detalhado: {csv_report_path}")
-        logger.info(f"📈 CSV Resumo: {summary_csv_path}")
-        
-        logger.info("\n🎉 Sistema AutoApply.AI executado com sucesso!")
-        logger.info("📊 Os arquivos CSV com logs completos foram gerados automaticamente.")
+        logger.info(f"📊 CSV detalhado: {csv_report_path}")
+        logger.info(f"📋 CSV resumo: {summary_csv_path}")
+        logger.info("=" * 60)
         
     except Exception as e:
         logger.error(f"❌ Erro durante execução: {str(e)}")
         raise
+
+async def _apply_to_job(match, job_number: int, app_logger) -> Dict:
+    """Apply to a specific job."""
+    try:
+        # Preparar dados da vaga
+        if isinstance(match, dict):
+            job_data = match
+            score = match.get('match_score', 0)
+        else:
+            job_data = {
+                'title': match.job.title,
+                'company': getattr(match.job, 'company', 'Unknown'),
+                'url': match.job.url,
+                'description': match.job.description
+            }
+            score = getattr(match, 'match_score', 0)
+        
+        # Log da aplicação
+        logger.info(f"   📄 Aplicação {job_number}: {job_data.get('title', 'Unknown')}")
+        logger.info(f"      Score: {score:.1f}%")
+        logger.info(f"      URL: {job_data.get('url', 'N/A')}")
+        
+        # Verificar se é duplicata antes de aplicar
+        is_duplicate, duplicate_type, existing_hash = app_logger._is_duplicate_job(job_data)
+        
+        if is_duplicate:
+            if duplicate_type == "already_applied":
+                logger.info(f"      ⚠️ Já aplicado anteriormente - PULANDO")
+                app_logger.log_job_application(
+                    job_data, 
+                    ApplicationStatus.ALREADY_APPLIED, 
+                    score, 
+                    platform="AutoApply.AI"
+                )
+                return {'status': 'already_applied', 'success': False}
+            else:
+                logger.info(f"      ⚠️ Vaga duplicada detectada - PULANDO")
+                app_logger.log_job_application(
+                    job_data, 
+                    ApplicationStatus.DUPLICATE, 
+                    score, 
+                    platform="AutoApply.AI"
+                )
+                return {'status': 'duplicate', 'success': False}
+        
+        # Simular aplicação
+        logger.info(f"      🔄 Simulando aplicação...")
+        await asyncio.sleep(1)  # Simular tempo de aplicação
+        
+        # Log da aplicação bem-sucedida
+        app_logger.log_job_application(
+            job_data, 
+            ApplicationStatus.APPLIED, 
+            score, 
+            platform="AutoApply.AI"
+        )
+        
+        logger.info(f"      ✅ Aplicação simulada com sucesso")
+        return {'status': 'applied', 'success': True}
+        
+    except Exception as e:
+        logger.error(f"      ❌ Erro na aplicação: {str(e)}")
+        app_logger.log_job_application(
+            job_data, 
+            ApplicationStatus.FAILED, 
+            score, 
+            error=str(e),
+            platform="AutoApply.AI"
+        )
+        return {'status': 'failed', 'success': False, 'error': str(e)}
 
 if __name__ == "__main__":
     asyncio.run(main())
