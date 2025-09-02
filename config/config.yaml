@@ -90,7 +90,7 @@ job_search:
       search_interval: 3600
   remote_only: true
 linkedin:
-  email: your-linkedin-email
+  email: felipefrancanogueira@gmail.com
   enabled: true
   feed_search:
     days_back: 7
@@ -121,7 +121,7 @@ linkedin:
     - United States
     - Canada
     - Europe
-  password: your-linkedin-password
+  password: Ffn335473!
 logging:
   backup_count: 5
   file: logs/autoapply.log
