@@ -1,0 +1,52 @@
+# Configuração do Sistema Contínuo AutoApply.AI
+# Este arquivo controla o comportamento do sistema de aplicação contínua
+
+# Intervalos e Limites
+search_interval: 30  # Intervalo entre ciclos de busca (em segundos) - 30 segundos
+max_applications_per_cycle: 20  # Máximo de aplicações por ciclo
+max_concurrent_applications: 5  # Máximo de aplicações simultâneas
+application_delay: 30  # Delay entre aplicações (em segundos)
+min_match_score: 70.0  # Score mínimo para aplicar (0-100)
+
+# Configurações de Retry
+max_retries: 3  # Máximo de tentativas em caso de erro
+retry_delay: 300  # Delay entre tentativas (em segundos)
+
+# Groq AI Configuration
+enable_groq_ai: true  # Habilitar integração com Groq AI
+groq_model: "llama-3.1-8b-instant"  # Modelo do Groq a ser usado
+# groq_api_key: "gsk_..."  # Chave da API (carregada automaticamente de config/credentials.yaml)
+
+# Plataformas Habilitadas
+platforms:
+  - "remotive"
+  - "weworkremotely" 
+  - "email"
+  - "direct"
+  - "linkedin"
+
+# Configurações de Logging (removido - não usado no SystemConfig)
+# logging:
+#   level: "INFO"  # DEBUG, INFO, WARNING, ERROR
+#   rotation: "10 MB"  # Rotação de logs
+#   retention: "7 days"  # Retenção de logs
+
+# Configurações de Monitoramento
+monitoring:
+  enable_health_checks: true
+  health_check_interval: 300  # Verificação de saúde a cada 5 minutos
+  max_memory_usage: 1024  # Máximo de uso de memória em MB
+  max_cpu_usage: 80  # Máximo de uso de CPU em %
+
+# Configurações de Notificação (futuro)
+notifications:
+  enable_email_notifications: false
+  enable_webhook_notifications: false
+  webhook_url: ""
+  email_recipients: []
+
+# Configurações de Backup
+backup:
+  enable_auto_backup: true
+  backup_interval: 86400  # Backup diário
+  backup_retention: 7  # Manter backups por 7 dias
